@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/supa/:path*",
+      "destination": "https://pkfaaezbwnkgjfgpovzo.supabase.co/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {"key": "Cache-Control", "value": "no-store, max-age=0"}
+      ]
+    }
+  ]
+}
