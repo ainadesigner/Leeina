@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#061813">
   <meta name="description" content="전 세계 AI 공모전, 영화제, 교육, 정책 기회를 한눈에 찾는 AI Contest Hub">
   <title>AI Contest Hub · Global AI Opportunities</title>
-  <link rel="stylesheet" href="/style.css?v=101">
+  <link rel="stylesheet" href="/style.css?v=102">
 </head>
 <body>
 <div class="app">
@@ -53,7 +53,7 @@
 
     <section class="screen" id="my">
       <div class="hero compact"><small>MY HUB</small><h1>내 정보</h1></div>
-      <div class="panel profile"><strong id="name">게스트</strong><p id="email">로그인하면 저장한 기회를 클라우드에 동기화할 수 있습니다.</p></div>
+      <div class="panel profile"><strong id="name">게스트</strong><p id="email">로그인하면 출석과 수상 인증 기록을 저장할 수 있습니다.</p></div>
       <div class="panel" id="authBox">
         <input class="input" id="authName" placeholder="이름 (회원가입 시)">
         <input class="input" id="authEmail" type="email" autocomplete="email" placeholder="이메일">
@@ -63,8 +63,35 @@
         <p class="msg" id="authMsg"></p>
       </div>
       <div class="panel" id="loggedBox" hidden><button class="btn secondary full" id="signOutBtn">로그아웃</button></div>
+
+      <section id="rewardHub" hidden>
+        <div class="sectionTitle rewardTitle"><div><small>DAILY CHALLENGE</small><h2>오늘도 AI 도전 완료!</h2></div></div>
+        <div class="rewardHero">
+          <div><span class="rewardEmoji">🔥</span><b id="streakCount">0일 연속 출석</b><small id="todayState">오늘 출석 전</small></div>
+          <button class="checkinBtn" id="checkinBtn">오늘 출석 도장 찍기</button>
+        </div>
+
+        <div class="panel challengeCard">
+          <div class="challengeTop"><div><small>☕ MONTHLY COFFEE CHALLENGE</small><strong>이번 달 출석 챌린지</strong></div><b id="monthCount">0 / 20일</b></div>
+          <div class="progress"><i id="monthProgress"></i></div>
+          <p id="coffeeGuide">20일 출석을 달성하면 커피 쿠폰 이벤트에 참여할 수 있어요.</p>
+          <button class="btn primary full" id="coffeeClaimBtn" disabled>커피 리워드 신청</button>
+          <p class="msg" id="coffeeMsg"></p>
+        </div>
+
+        <div class="panel awardCard">
+          <div class="awardHead"><span>🏆</span><div><small>VERIFIED WINNER</small><strong>수상 인증하기</strong><p>AI 공모전 수상 기록을 인증하고 특별 리워드에 도전하세요.</p></div></div>
+          <input class="input" id="awardContest" placeholder="공모전 / 영화제 이름">
+          <input class="input" id="awardName" placeholder="수상명 (예: 대상, 우수상, Finalist)">
+          <label class="fileBox">상장 또는 수상 화면 업로드<input id="awardProof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+          <button class="btn awardBtn full" id="awardSubmitBtn">수상 인증 제출</button>
+          <p class="msg" id="awardMsg"></p>
+          <div class="awardHistory" id="awardHistory"></div>
+        </div>
+      </section>
+
       <div class="panel instagramCard"><div class="instagramLogo">◎</div><div><strong>Instagram · @AI.CONTESTHUB</strong><p>새 공모전 소식과 AI 크리에이터 정보를 인스타그램에서도 확인하세요.</p><a href="https://www.instagram.com/ai.contesthub/" target="_blank" rel="noopener">Instagram 열기 ↗</a></div></div>
-      <div class="panel version"><b>AI Contest Hub v1.0</b><p>Global AI Opportunities · Verified Sources · AI Policy Index</p></div>
+      <div class="panel version"><b>AI Contest Hub v1.1</b><p>Discover · Challenge · Win · Verify</p></div>
     </section>
   </main>
 </div>
@@ -77,6 +104,6 @@
 </nav>
 
 <div class="modal" id="detailModal"><div class="sheet"><button class="close" id="detailClose">×</button><div id="detailBody"></div></div></div>
-<script src="/app.js?v=101" defer></script>
+<script src="/app.js?v=102" defer></script>
 </body>
 </html>
