@@ -49,6 +49,40 @@ jobs:
         working-directory: android
         run: ./gradlew bundleRelease --stacktrace
 
+      - name: Sign release AAB
+        if: github.event_name != 'pull_request'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "Missing ANDROID_KEYSTORE_BASE64"; exit 1; }
+          test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "Missing ANDROID_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$ANDROID_KEY_ALIAS" || { echo "Missing ANDROID_KEY_ALIAS"; exit 1; }
+          test -n "$ANDROID_KEY_PASSWORD" || { echo "Missing ANDROID_KEY_PASSWORD"; exit 1; }
+
+          KEYSTORE="$RUNNER_TEMP/aich-upload-keystore.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          SOURCE_AAB="$(find android/app/build/outputs/bundle/release -name '*.aab' -print -quit)"
+          test -n "$SOURCE_AAB" || { echo "Release AAB not found"; exit 1; }
+          SIGNED_AAB="android/app/build/outputs/bundle/release/ai-contest-hub-release-signed.aab"
+          cp "$SOURCE_AAB" "$SIGNED_AAB"
+
+          jarsigner \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore "$KEYSTORE" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            "$SIGNED_AAB" \
+            "$ANDROID_KEY_ALIAS"
+
+          jarsigner -verify -strict -verbose -certs "$SIGNED_AAB"
+          rm -f "$KEYSTORE"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -56,9 +90,17 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload release AAB
+      - name: Upload unsigned release AAB
         uses: actions/upload-artifact@v4
         with:
           name: ai-contest-hub-release-aab-unsigned
-          path: android/app/build/outputs/bundle/release/*.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload signed release AAB
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-contest-hub-release-aab-signed
+          path: android/app/build/outputs/bundle/release/ai-contest-hub-release-signed.aab
           if-no-files-found: error
