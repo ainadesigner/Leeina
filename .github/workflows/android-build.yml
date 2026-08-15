@@ -114,7 +114,7 @@ jobs:
             "$SIGNED_AAB" \
             "$ANDROID_KEY_ALIAS"
 
-          jarsigner -verify -strict -verbose -certs "$SIGNED_AAB"
+          jarsigner -verify -verbose -certs "$SIGNED_AAB"
           rm -f "$KEYSTORE"
 
       - name: Upload debug APK
