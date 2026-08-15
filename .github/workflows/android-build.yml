@@ -49,6 +49,45 @@ jobs:
         working-directory: android
         run: ./gradlew bundleRelease --stacktrace
 
+      - name: Validate signing inputs
+        if: github.event_name != 'pull_request'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          EXPECTED_KEYSTORE_SHA256: 76985cea622be0ec9bae6072ad2b64b19c7072b32c6e9cde5ad888956494510f
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEYSTORE_BASE64"; exit 11; }
+          test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEYSTORE_PASSWORD"; exit 12; }
+          test -n "$ANDROID_KEY_ALIAS" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEY_ALIAS"; exit 13; }
+          test -n "$ANDROID_KEY_PASSWORD" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEY_PASSWORD"; exit 14; }
+
+          KEYSTORE="$RUNNER_TEMP/aich-upload-keystore.jks"
+          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE"; then
+            echo "SIGNING_BASE64_INVALID"
+            exit 21
+          fi
+
+          ACTUAL_SHA256="$(sha256sum "$KEYSTORE" | awk '{print $1}')"
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_KEYSTORE_SHA256" ]; then
+            echo "SIGNING_KEYSTORE_MISMATCH"
+            exit 22
+          fi
+
+          if ! keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "SIGNING_STORE_PASSWORD_INVALID"
+            exit 23
+          fi
+
+          if ! keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "SIGNING_ALIAS_INVALID"
+            exit 24
+          fi
+
+          echo "SIGNING_INPUTS_VALID"
+
       - name: Sign release AAB
         if: github.event_name != 'pull_request'
         env:
@@ -58,15 +97,10 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "Missing ANDROID_KEYSTORE_BASE64"; exit 1; }
-          test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "Missing ANDROID_KEYSTORE_PASSWORD"; exit 1; }
-          test -n "$ANDROID_KEY_ALIAS" || { echo "Missing ANDROID_KEY_ALIAS"; exit 1; }
-          test -n "$ANDROID_KEY_PASSWORD" || { echo "Missing ANDROID_KEY_PASSWORD"; exit 1; }
-
           KEYSTORE="$RUNNER_TEMP/aich-upload-keystore.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE"
 
-          SOURCE_AAB="$(find android/app/build/outputs/bundle/release -name '*.aab' -print -quit)"
+          SOURCE_AAB="$(find android/app/build/outputs/bundle/release -name 'app-release.aab' -print -quit)"
           test -n "$SOURCE_AAB" || { echo "Release AAB not found"; exit 1; }
           SIGNED_AAB="android/app/build/outputs/bundle/release/ai-contest-hub-release-signed.aab"
           cp "$SOURCE_AAB" "$SIGNED_AAB"
