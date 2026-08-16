@@ -31,6 +31,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate app JavaScript
+        run: |
+          set -euo pipefail
+          node --check app.js
+          grep -q "AICH_DISCOVERY_SORT_V1" app.js
+          grep -q "마감임박순" app.js
+          grep -q "상금 높은 순" app.js
+          grep -q "globalGrid" app.js
+          echo "DISCOVERY_UX_SOURCE_VALID"
+
       - name: Test native API bridge
         run: npm run test:native-bridge
 
@@ -55,26 +65,33 @@ jobs:
       - name: Generate Android project
         run: npm run android:init
 
-      - name: Verify packaged native bridge
+      - name: Verify packaged web assets
         run: |
           set -euo pipefail
           PACKAGED_BRIDGE="android/app/src/main/assets/public/native-bridge.js"
+          PACKAGED_APP="android/app/src/main/assets/public/app.js"
           test -f "$PACKAGED_BRIDGE"
+          test -f "$PACKAGED_APP"
           cmp native-bridge.js "$PACKAGED_BRIDGE"
+          cmp app.js "$PACKAGED_APP"
           grep -q "SUPABASE_ORIGIN" "$PACKAGED_BRIDGE"
           grep -q "LEGACY_ANON_KEY" "$PACKAGED_BRIDGE"
           grep -q "Authorization" "$PACKAGED_BRIDGE"
           grep -q "localhost" "$PACKAGED_BRIDGE"
-          echo "PACKAGED_NATIVE_BRIDGE_VALID"
+          grep -q "AICH_DISCOVERY_SORT_V1" "$PACKAGED_APP"
+          grep -q "마감임박순" "$PACKAGED_APP"
+          grep -q "상금 높은 순" "$PACKAGED_APP"
+          grep -q "globalGrid" "$PACKAGED_APP"
+          echo "PACKAGED_WEB_ASSETS_VALID"
 
-      - name: Set Android version 3
+      - name: Set Android version 4
         run: |
           set -euo pipefail
-          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 3/' android/app/build.gradle
-          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.2"/' android/app/build.gradle
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 4/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.3"/' android/app/build.gradle
           grep -nE 'versionCode|versionName' android/app/build.gradle
-          grep -qE 'versionCode[[:space:]]+3' android/app/build.gradle
-          grep -qE 'versionName[[:space:]]+"1\.2"' android/app/build.gradle
+          grep -qE 'versionCode[[:space:]]+4' android/app/build.gradle
+          grep -qE 'versionName[[:space:]]+"1\.3"' android/app/build.gradle
 
       - name: Show Android SDK levels
         run: |
@@ -97,11 +114,17 @@ jobs:
           SOURCE_AAB="android/app/build/outputs/bundle/release/app-release.aab"
           test -f "$SOURCE_AAB"
           unzip -p "$SOURCE_AAB" base/assets/public/native-bridge.js > "$RUNNER_TEMP/native-bridge-from-aab.js"
+          unzip -p "$SOURCE_AAB" base/assets/public/app.js > "$RUNNER_TEMP/app-from-aab.js"
           cmp native-bridge.js "$RUNNER_TEMP/native-bridge-from-aab.js"
+          cmp app.js "$RUNNER_TEMP/app-from-aab.js"
           grep -q "https://pkfaaezbwnkgjfgpovzo.supabase.co" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "LEGACY_ANON_KEY" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "Authorization" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "localhost" "$RUNNER_TEMP/native-bridge-from-aab.js"
+          grep -q "AICH_DISCOVERY_SORT_V1" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "마감임박순" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "상금 높은 순" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "globalGrid" "$RUNNER_TEMP/app-from-aab.js"
           echo "RELEASE_BUNDLE_CONTENTS_VALID"
 
       - name: Validate signing inputs
@@ -157,7 +180,7 @@ jobs:
 
           SOURCE_AAB="android/app/build/outputs/bundle/release/app-release.aab"
           test -f "$SOURCE_AAB" || { echo "Release AAB not found"; exit 1; }
-          SIGNED_AAB="android/app/build/outputs/bundle/release/AI-Contest-Hub-1.2-build3-signed.aab"
+          SIGNED_AAB="android/app/build/outputs/bundle/release/AI-Contest-Hub-1.3-build4-signed.aab"
           cp "$SOURCE_AAB" "$SIGNED_AAB"
 
           jarsigner \
@@ -177,14 +200,14 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: ai-contest-hub-debug-apk-v3-final
+          name: ai-contest-hub-debug-apk-v4-final
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload unsigned release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: ai-contest-hub-release-aab-unsigned-v3-final
+          name: ai-contest-hub-release-aab-unsigned-v4-final
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
@@ -192,8 +215,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: ai-contest-hub-release-aab-signed-v3-final
+          name: ai-contest-hub-release-aab-signed-v4-final
           path: |
-            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.2-build3-signed.aab
-            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.2-build3-signed.aab.sha256
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.3-build4-signed.aab
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.3-build4-signed.aab.sha256
           if-no-files-found: error
