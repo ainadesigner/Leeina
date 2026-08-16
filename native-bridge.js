@@ -2,6 +2,7 @@
 'use strict';
 
 const WEB_ORIGIN='https://ai-contest-hub-v12.vercel.app';
+const SUPABASE_ORIGIN='https://pkfaaezbwnkgjfgpovzo.supabase.co';
 const isNative=/^(capacitor:|ionic:|file:)/i.test(location.protocol);
 if(!isNative)return;
 
@@ -9,9 +10,12 @@ const originalFetch=window.fetch.bind(window);
 
 function rewriteUrl(raw){
   let url=String(raw||'');
-  if(url.startsWith('/supa')) url=WEB_ORIGIN+url;
-  if(url.startsWith('capacitor://localhost/supa')) url=WEB_ORIGIN+url.slice('capacitor://localhost'.length);
-  if(url.startsWith('ionic://localhost/supa')) url=WEB_ORIGIN+url.slice('ionic://localhost'.length);
+
+  // Native apps call Supabase directly. The web app continues to use Vercel's
+  // same-origin /supa proxy, so production web behavior is unchanged.
+  if(url.startsWith('/supa')) url=SUPABASE_ORIGIN+url.slice('/supa'.length);
+  if(url.startsWith('capacitor://localhost/supa')) url=SUPABASE_ORIGIN+url.slice('capacitor://localhost/supa'.length);
+  if(url.startsWith('ionic://localhost/supa')) url=SUPABASE_ORIGIN+url.slice('ionic://localhost/supa'.length);
 
   try{
     const parsed=new URL(url,WEB_ORIGIN);
@@ -40,4 +44,5 @@ window.fetch=function(input,init){
 
 window.AI_CONTEST_HUB_NATIVE=true;
 window.AI_CONTEST_HUB_WEB_ORIGIN=WEB_ORIGIN;
+window.AI_CONTEST_HUB_SUPABASE_ORIGIN=SUPABASE_ORIGIN;
 })();
