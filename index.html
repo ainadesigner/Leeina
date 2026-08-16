@@ -27,8 +27,8 @@
       <div class="grid" id="globalPicks"><div class="empty"><b>데이터를 불러오는 중입니다.</b>잠시만 기다려 주세요.</div></div>
       <div class="sectionTitle"><div><small>DEADLINE</small><h2>마감 임박</h2></div><button data-deadline>전체 보기</button></div>
       <div class="grid" id="deadlineGrid"></div>
-      <div class="sectionTitle"><div><small>NEW</small><h2>방금 올라온 AI 기회</h2></div><button data-go="explore">전체 보기</button></div>
-      <div class="grid" id="latest"></div>
+      <div class="sectionTitle"><div><small>GLOBAL</small><h2>Global AI Opportunities</h2></div><button id="globalAll">전체 보기</button></div>
+      <div class="grid" id="globalGrid"><div class="empty"><b>Global 기회를 불러오는 중입니다.</b>잠시만 기다려 주세요.</div></div>
     </section>
 
     <section class="screen" id="explore">
@@ -38,6 +38,7 @@
       <div class="filters">
         <select id="aiFilter"><option value="all">AI 가능 여부 전체</option><option value="ready">AI 사용 가능</option><option value="required">AI 필수</option><option value="allowed">AI 사용 가능</option><option value="limited">AI 일부 허용</option><option value="unclear">AI 규정 확인필요</option></select>
         <select id="scopeFilter"><option value="all">국내 + 해외</option><option value="global">🌎 Global</option><option value="korea">🇰🇷 Korea</option><option value="overseas">해외</option></select>
+        <select id="sortFilter" aria-label="정렬"><option value="recommended">추천순</option><option value="deadline">마감 임박순</option><option value="prize">상금 높은 순</option><option value="newest">최신 등록순</option></select>
       </div>
       <div class="resultMeta"><b id="resultCount">0</b><span>개의 AI 기회</span></div>
       <div class="grid" id="all"></div>
@@ -104,6 +105,7 @@
 <div class="modal" id="detailModal"><div class="sheet"><button class="close" id="detailClose">×</button><div id="detailBody"></div></div></div>
 <script src="/app.js?v=103" defer></script>
 <script src="/admin.js?v=103" defer></script>
+<script src="/home-enhancements.js?v=105" defer></script>
 <script src="/recovery.js?v=104" defer></script>
 </body>
 </html>
