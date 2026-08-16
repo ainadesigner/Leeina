@@ -5,13 +5,17 @@ import vm from 'node:vm';
 const source=await readFile(new URL('../native-bridge.js',import.meta.url),'utf8');
 const SUPABASE='https://pkfaaezbwnkgjfgpovzo.supabase.co';
 const WEB='https://ai-contest-hub-v12.vercel.app';
+const keyMatch=source.match(/const LEGACY_ANON_KEY='([^']+)'/);
+assert.ok(keyMatch,'native bridge must define the legacy anon key');
+const ANON_KEY=keyMatch[1];
 
 class MockRequest{
   constructor(input,init={}){
-    this.url=typeof input==='string'?input:input.url;
-    this.method=init.method||(input&&input.method)||'GET';
-    this.headers=init.headers||(input&&input.headers)||{};
-    this.body=init.body||(input&&input.body);
+    const base=typeof input==='string'?{}:(input||{});
+    this.url=typeof input==='string'?input:base.url;
+    this.method=init.method||base.method||'GET';
+    this.headers=new Headers(init.headers||base.headers||{});
+    this.body=init.body!==undefined?init.body:base.body;
   }
 }
 
@@ -33,6 +37,7 @@ function boot(locationHref,{capacitor=false}={}){
     window,
     location,
     URL,
+    Headers,
     Request:MockRequest,
     console
   };
@@ -49,13 +54,30 @@ function boot(locationHref,{capacitor=false}={}){
     `${SUPABASE}/rest/v1/contests?status=eq.live`,
     'relative /supa calls must go directly to Supabase'
   );
+  assert.equal(calls[0][1].headers.get('apikey'),ANON_KEY,'native public requests must use the legacy anon apikey');
+  assert.equal(calls[0][1].headers.get('Authorization'),`Bearer ${ANON_KEY}`,'native public requests must include an anon Bearer token');
 }
 
 {
   const {window,calls}=boot('https://localhost/');
-  const request=new MockRequest('https://localhost/supa/auth/v1/user',{method:'GET'});
+  const userJwt='ey.test-user-session.jwt';
+  await window.fetch('/supa/rest/v1/saved_contests',{
+    headers:{Authorization:`Bearer ${userJwt}`}
+  });
+  assert.equal(calls[0][1].headers.get('apikey'),ANON_KEY);
+  assert.equal(calls[0][1].headers.get('Authorization'),`Bearer ${userJwt}`,'signed-in user JWTs must be preserved');
+}
+
+{
+  const {window,calls}=boot('https://localhost/');
+  const request=new MockRequest('https://localhost/supa/auth/v1/user',{
+    method:'GET',
+    headers:{Authorization:'Bearer ey.user.jwt'}
+  });
   await window.fetch(request);
   assert.equal(calls[0][0].url,`${SUPABASE}/auth/v1/user`,'Request objects must also be rewritten');
+  assert.equal(calls[0][0].headers.get('apikey'),ANON_KEY);
+  assert.equal(calls[0][0].headers.get('Authorization'),'Bearer ey.user.jwt');
 }
 
 {
@@ -87,6 +109,7 @@ function boot(locationHref,{capacitor=false}={}){
   assert.equal(window.AI_CONTEST_HUB_NATIVE,true,'Capacitor native detection must work even with a custom scheme/host');
   await window.fetch('/supa/rest/v1/contests');
   assert.equal(calls[0][0],`${SUPABASE}/rest/v1/contests`);
+  assert.equal(calls[0][1].headers.get('Authorization'),`Bearer ${ANON_KEY}`);
 }
 
 console.log('Native bridge regression tests passed.');
