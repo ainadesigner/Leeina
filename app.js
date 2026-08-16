@@ -7,7 +7,7 @@ let contests=[],activeCategory='전체',currentUser=null;
 let saved=new Set(JSON.parse(localStorage.getItem('aich_saved')||'[]'));
 let monthCheckins=0;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[m]))}
+function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function pick(o,...ks){for(const k of ks)if(o?.[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k];return ''}
 function token(){return localStorage.getItem('aich_access_token')||''}
 function headers(auth=true){const h={'apikey':KEY,'Content-Type':'application/json'};if(auth&&token())h.Authorization='Bearer '+token();return h}
