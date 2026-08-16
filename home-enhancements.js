@@ -62,8 +62,13 @@ async function loadRows(){
     rows=await r.json();byId=new Map(rows.map(x=>[idOf(x),x]));schedule();
   }catch(e){console.warn('home enhancements',e)}
 }
+function openGlobalExplore(){
+  const nav=$('.nav [data-go="explore"]');if(nav)nav.click();
+  const scope=$('#scopeFilter');if(scope){scope.value='global';scope.dispatchEvent(new Event('change',{bubbles:true}))}
+}
 function init(){
   const sort=$('#sortFilter');if(sort)sort.addEventListener('change',applySort);
+  const globalAll=$('#globalAll');if(globalAll)globalAll.addEventListener('click',openGlobalExplore);
   observe();loadRows();schedule();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
