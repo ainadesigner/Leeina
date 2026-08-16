@@ -3,6 +3,7 @@
   "version": "1.2.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/sync-discovery-ui.mjs",
     "prepare:web": "node scripts/prepare-capacitor.mjs",
     "test:native-bridge": "node scripts/test-native-bridge.mjs",
     "android:init": "npm run prepare:web && npx cap add android",
