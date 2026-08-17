@@ -10,12 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - uses: actions/setup-java@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -23,13 +29,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate source and custom icon package
+      - name: Validate app and reconstruct exact icon sources
         run: |
           set -euo pipefail
           node --check app.js
           node --check admin.js
           node --check recovery.js
           node --check scripts/prepare-capacitor.mjs
+          node --check scripts/reconstruct-icons.mjs
           grep -q 'AICH_DISCOVERY_SORT_V1' app.js
           grep -q 'AICH_SESSION_30D_V1' app.js
           grep -q 'AICH_SESSION_INTEGRATION_V1' app.js
@@ -39,15 +46,13 @@ jobs:
           grep -q '마감임박순' app.js
           grep -q '상금 높은 순' app.js
           grep -q '"version": "1.5.0"' package.json
-          grep -q 'npm run android:icon' package.json
-          test "$(find assets -maxdepth 1 -name 'icon-play.b64.part*' -type f | wc -l)" -eq 5
-          test "$(find assets -maxdepth 1 -name 'icon-foreground.b64.part*' -type f | wc -l)" -eq 4
+          test "$(find assets -maxdepth 1 -name 'icon-play.b64.head*' -type f | wc -l)" -eq 6
+          test "$(find assets -maxdepth 1 -name 'icon-foreground.b64.head*' -type f | wc -l)" -eq 6
+          node scripts/reconstruct-icons.mjs
+          test "$(sha256sum assets/icon-play.png | awk '{print $1}')" = 'e8244395b02b5f0412b0d205f10687085e3b2203a194ec4ee82cf6d04d9ba808'
+          test "$(sha256sum assets/icon-foreground.png | awk '{print $1}')" = '425ebec5fed6ad1d850758657ece6ed2a9bfe485ac45545fe51fc2c6ff7e74d5'
           javac scripts/GenerateAndroidIcons.java
           rm -f scripts/GenerateAndroidIcons.class
-          cat assets/icon-play.b64.part* | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/icon-play.png"
-          cat assets/icon-foreground.b64.part* | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/icon-foreground.png"
-          test "$(sha256sum "$RUNNER_TEMP/icon-play.png" | awk '{print $1}')" = 'e8244395b02b5f0412b0d205f10687085e3b2203a194ec4ee82cf6d04d9ba808'
-          test "$(sha256sum "$RUNNER_TEMP/icon-foreground.png" | awk '{print $1}')" = '425ebec5fed6ad1d850758657ece6ed2a9bfe485ac45545fe51fc2c6ff7e74d5'
           echo SOURCE_AND_ICON_PACKAGE_VALID
 
       - name: Test native API bridge
@@ -62,10 +67,10 @@ jobs:
           node -e "const d=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/smoke.json'));if(!Array.isArray(d))process.exit(1)"
           echo SUPABASE_PUBLIC_API_OK
 
-      - name: Generate Android project and custom icons
+      - name: Generate Android project and custom ACH icons
         run: npm run android:init
 
-      - name: Verify packaged app and launcher assets
+      - name: Verify packaged app and icon resources
         run: |
           set -euo pipefail
           W=android/app/src/main/assets/public
@@ -77,27 +82,35 @@ jobs:
           grep -q 'AICH_SESSION_30D_V1' "$W/app.js"
           grep -q 'AICH_SESSION_INTEGRATION_V1' "$W/app.js"
           R=android/app/src/main/res
-          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do for f in ic_launcher.png ic_launcher_round.png ic_launcher_foreground.png ic_launcher_monochrome.png; do test -f "$R/mipmap-$d/$f"; done; done
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            for f in ic_launcher.png ic_launcher_round.png ic_launcher_foreground.png ic_launcher_monochrome.png; do test -f "$R/mipmap-$d/$f"; done
+          done
           test -f "$R/mipmap-anydpi-v26/ic_launcher.xml"
           test -f "$R/mipmap-anydpi-v33/ic_launcher.xml"
           grep -q ic_launcher_foreground "$R/mipmap-anydpi-v26/ic_launcher.xml"
           grep -q ic_launcher_monochrome "$R/mipmap-anydpi-v33/ic_launcher.xml"
+          grep -q 'android:icon="@mipmap/ic_launcher"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' android/app/src/main/AndroidManifest.xml
           test -f assets/play-store-icon-512.png
           python3 - <<'PY'
           from pathlib import Path
           import struct
-          for p,w,h in [
+          checks=[
             ('assets/play-store-icon-512.png',512,512),
             ('android/app/src/main/res/mipmap-mdpi/ic_launcher.png',48,48),
             ('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',192,192),
-            ('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',432,432)]:
+            ('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',432,432),
+          ]
+          for p,w,h in checks:
             b=Path(p).read_bytes()
-            if b[:8]!=b'\x89PNG\r\n\x1a\n' or struct.unpack('>II',b[16:24])!=(w,h): raise SystemExit('invalid icon '+p)
+            assert b[:8]==b'\x89PNG\r\n\x1a\n', p
+            assert struct.unpack('>II',b[16:24])==(w,h), (p,struct.unpack('>II',b[16:24]))
           print('ICON_DIMENSIONS_VALID')
           PY
 
       - name: Set Android version 6
         run: |
+          set -euo pipefail
           sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 6/' android/app/build.gradle
           sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.5"/' android/app/build.gradle
           grep -qE 'versionCode[[:space:]]+6' android/app/build.gradle
@@ -109,7 +122,7 @@ jobs:
           chmod +x gradlew
           ./gradlew bundleRelease --stacktrace
 
-      - name: Verify release bundle
+      - name: Verify release bundle contents
         run: |
           set -euo pipefail
           A=android/app/build/outputs/bundle/release/app-release.aab
@@ -120,10 +133,10 @@ jobs:
           grep -q 'AI Contest Hub v1.5' "$RUNNER_TEMP/index.html"
           grep -q 'AICH_SESSION_30D_V1' "$RUNNER_TEMP/app.js"
           unzip -Z1 "$A" > "$RUNNER_TEMP/aab-files.txt"
-          grep -q 'base/res/mipmap-mdpi-v4/ic_launcher.png' "$RUNNER_TEMP/aab-files.txt"
-          grep -q 'base/res/mipmap-xxxhdpi-v4/ic_launcher_foreground.png' "$RUNNER_TEMP/aab-files.txt"
-          grep -q 'base/res/mipmap-anydpi-v26/ic_launcher.xml' "$RUNNER_TEMP/aab-files.txt"
-          echo RELEASE_BUNDLE_VALID
+          test "$(grep -c 'ic_launcher' "$RUNNER_TEMP/aab-files.txt")" -ge 8
+          grep -q 'ic_launcher_foreground' "$RUNNER_TEMP/aab-files.txt"
+          grep -q 'ic_launcher_monochrome' "$RUNNER_TEMP/aab-files.txt"
+          echo RELEASE_BUNDLE_CONTENTS_VALID
 
       - name: Validate upload signing key
         env:

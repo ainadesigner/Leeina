@@ -5,16 +5,16 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.*;
 
 public class GenerateAndroidIcons {
   static final String[] D={"mdpi","hdpi","xhdpi","xxhdpi","xxxhdpi"};
   static final int[] L={48,72,96,144,192}, A={108,162,216,324,432};
   public static void main(String[] z)throws Exception{
     System.setProperty("java.awt.headless","true");
-    Path root=Paths.get("").toAbsolutePath(),res=root.resolve("android/app/src/main/res");
-    BufferedImage play=read(root.resolve("assets"),"icon-play.b64.part");
-    BufferedImage fg=read(root.resolve("assets"),"icon-foreground.b64.part");
+    Path root=Paths.get("").toAbsolutePath(),res=root.resolve("android/app/src/main/res"),assets=root.resolve("assets");
+    BufferedImage play=ImageIO.read(assets.resolve("icon-play.png").toFile());
+    BufferedImage fg=ImageIO.read(assets.resolve("icon-foreground.png").toFile());
+    if(play==null||fg==null)throw new IOException("icon source PNG missing or invalid");
     size(play,512,512,"play"); size(fg,432,432,"foreground");
     for(int i=0;i<D.length;i++){
       Path p=res.resolve("mipmap-"+D[i]); Files.createDirectories(p); clean(p);
@@ -35,17 +35,8 @@ public class GenerateAndroidIcons {
     adaptive(res.resolve("mipmap-anydpi-v33"),true);
     String m=Files.readString(root.resolve("android/app/src/main/AndroidManifest.xml"));
     if(!m.contains("android:icon=\"@mipmap/ic_launcher\"")||!m.contains("android:roundIcon=\"@mipmap/ic_launcher_round\""))throw new IllegalStateException("launcher refs missing");
-    png(store(play),root.resolve("assets/play-store-icon-512.png"));
+    png(store(play),assets.resolve("play-store-icon-512.png"));
     System.out.println("AI Contest Hub custom launcher icon applied");
-  }
-  static BufferedImage read(Path dir,String prefix)throws Exception{
-    ArrayList<Path> ps=new ArrayList<>();
-    try(DirectoryStream<Path>s=Files.newDirectoryStream(dir,prefix+"*")){for(Path p:s)ps.add(p);}
-    ps.sort(Comparator.comparing(p->p.getFileName().toString()));
-    if(ps.isEmpty())throw new IOException("missing "+prefix);
-    StringBuilder b=new StringBuilder(); for(Path p:ps)b.append(Files.readString(p,StandardCharsets.US_ASCII).replaceAll("\\s+",""));
-    BufferedImage im=ImageIO.read(new ByteArrayInputStream(Base64.getDecoder().decode(b.toString())));
-    if(im==null)throw new IOException("invalid "+prefix); return im;
   }
   static void size(BufferedImage i,int w,int h,String n){if(i.getWidth()!=w||i.getHeight()!=h)throw new IllegalStateException(n+" size "+i.getWidth()+"x"+i.getHeight());}
   static Graphics2D g(BufferedImage o){Graphics2D g=o.createGraphics();g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BICUBIC);g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY);return g;}

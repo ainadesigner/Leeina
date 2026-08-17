@@ -5,7 +5,7 @@
   "scripts": {
     "prepare:web": "node scripts/prepare-capacitor.mjs",
     "test:native-bridge": "node scripts/test-native-bridge.mjs",
-    "android:icon": "java scripts/GenerateAndroidIcons.java",
+    "android:icon": "node scripts/reconstruct-icons.mjs && java scripts/GenerateAndroidIcons.java",
     "android:init": "npm run prepare:web && npx cap add android && npm run android:icon",
     "android:sync": "npm run prepare:web && npx cap sync android && npm run android:icon",
     "android:open": "npx cap open android"
