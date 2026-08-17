@@ -1,12 +1,13 @@
 {
   "name": "ai-contest-hub",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "prepare:web": "node scripts/prepare-capacitor.mjs",
     "test:native-bridge": "node scripts/test-native-bridge.mjs",
-    "android:init": "npm run prepare:web && npx cap add android",
-    "android:sync": "npm run prepare:web && npx cap sync android",
+    "android:icon": "java scripts/GenerateAndroidIcons.java",
+    "android:init": "npm run prepare:web && npx cap add android && npm run android:icon",
+    "android:sync": "npm run prepare:web && npx cap sync android && npm run android:icon",
     "android:open": "npx cap open android"
   },
   "dependencies": {

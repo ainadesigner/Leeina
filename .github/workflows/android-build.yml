@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Build 1.5 Custom Icon
 
 on:
   push:
@@ -10,51 +10,45 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Validate app JavaScript and session logic
+      - name: Validate source and custom icon package
         run: |
           set -euo pipefail
           node --check app.js
           node --check admin.js
           node --check recovery.js
-          grep -q "AICH_DISCOVERY_SORT_V1" app.js
-          grep -q "AICH_SESSION_30D_V1" app.js
-          grep -q "AICH_SESSION_INTEGRATION_V1" app.js
-          grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" app.js
-          grep -q "grant_type=refresh_token" app.js
-          grep -q "refreshPromise" app.js
-          grep -q "aich_session_started_at" app.js
-          grep -q "window.AICHSession" app.js
-          grep -q "if(!await ensureSession())" app.js
-          grep -q "s.request(path,opt)" admin.js
-          grep -q "await s.ensure()" admin.js
-          grep -q "window.AICHSession.save" recovery.js
-          grep -q "마감임박순" app.js
-          grep -q "상금 높은 순" app.js
-          grep -q "globalGrid" app.js
-          grep -q "/app.js?v=105" index.html
-          grep -q "/admin.js?v=105" index.html
-          grep -q "/recovery.js?v=105" index.html
-          grep -q "AI Contest Hub v1.4" index.html
-          echo "ANDROID_1_4_SOURCE_VALID"
+          node --check scripts/prepare-capacitor.mjs
+          grep -q 'AICH_DISCOVERY_SORT_V1' app.js
+          grep -q 'AICH_SESSION_30D_V1' app.js
+          grep -q 'AICH_SESSION_INTEGRATION_V1' app.js
+          grep -qF 'SESSION_MAX_AGE_MS=30*24*60*60*1000' app.js
+          grep -q 'grant_type=refresh_token' app.js
+          grep -q 'window.AICHSession' app.js
+          grep -q '마감임박순' app.js
+          grep -q '상금 높은 순' app.js
+          grep -q '"version": "1.5.0"' package.json
+          grep -q 'npm run android:icon' package.json
+          test "$(find assets -maxdepth 1 -name 'icon-play.b64.part*' -type f | wc -l)" -eq 5
+          test "$(find assets -maxdepth 1 -name 'icon-foreground.b64.part*' -type f | wc -l)" -eq 4
+          javac scripts/GenerateAndroidIcons.java
+          rm -f scripts/GenerateAndroidIcons.class
+          cat assets/icon-play.b64.part* | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/icon-play.png"
+          cat assets/icon-foreground.b64.part* | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/icon-foreground.png"
+          test "$(sha256sum "$RUNNER_TEMP/icon-play.png" | awk '{print $1}')" = 'e8244395b02b5f0412b0d205f10687085e3b2203a194ec4ee82cf6d04d9ba808'
+          test "$(sha256sum "$RUNNER_TEMP/icon-foreground.png" | awk '{print $1}')" = '425ebec5fed6ad1d850758657ece6ed2a9bfe485ac45545fe51fc2c6ff7e74d5'
+          echo SOURCE_AND_ICON_PACKAGE_VALID
 
       - name: Test native API bridge
         run: npm run test:native-bridge
@@ -62,211 +56,110 @@ jobs:
       - name: Smoke test Supabase public API
         run: |
           set -euo pipefail
-          ANON_KEY="$(node -e "const fs=require('fs');const s=fs.readFileSync('native-bridge.js','utf8');const m=s.match(/const LEGACY_ANON_KEY='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1]);")"
-          echo "ANON_KEY_LENGTH=${#ANON_KEY}"
-          STATUS="$(curl --silent --show-error \
-            --output "$RUNNER_TEMP/contests-smoke.json" \
-            --write-out '%{http_code}' \
-            'https://pkfaaezbwnkgjfgpovzo.supabase.co/rest/v1/contests?status=eq.live&select=id&limit=1' \
-            -H "apikey: $ANON_KEY" \
-            -H "Authorization: Bearer $ANON_KEY")"
-          echo "SUPABASE_HTTP_STATUS=$STATUS"
-          cat "$RUNNER_TEMP/contests-smoke.json"
-          echo
-          test "$STATUS" = "200"
-          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/contests-smoke.json','utf8'));if(!Array.isArray(d))process.exit(1);"
-          echo "SUPABASE_PUBLIC_API_OK"
+          KEY="$(node -e "const s=require('fs').readFileSync('native-bridge.js','utf8');const m=s.match(/const LEGACY_ANON_KEY='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
+          CODE="$(curl -sS -o "$RUNNER_TEMP/smoke.json" -w '%{http_code}' 'https://pkfaaezbwnkgjfgpovzo.supabase.co/rest/v1/contests?status=eq.live&select=id&limit=1' -H "apikey: $KEY" -H "Authorization: Bearer $KEY")"
+          test "$CODE" = 200
+          node -e "const d=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP+'/smoke.json'));if(!Array.isArray(d))process.exit(1)"
+          echo SUPABASE_PUBLIC_API_OK
 
-      - name: Generate Android project
+      - name: Generate Android project and custom icons
         run: npm run android:init
 
-      - name: Verify packaged web assets
+      - name: Verify packaged app and launcher assets
         run: |
           set -euo pipefail
-          ASSET_DIR="android/app/src/main/assets/public"
-          PACKAGED_BRIDGE="$ASSET_DIR/native-bridge.js"
-          PACKAGED_APP="$ASSET_DIR/app.js"
-          PACKAGED_ADMIN="$ASSET_DIR/admin.js"
-          PACKAGED_RECOVERY="$ASSET_DIR/recovery.js"
-          PACKAGED_INDEX="$ASSET_DIR/index.html"
-          for file in "$PACKAGED_BRIDGE" "$PACKAGED_APP" "$PACKAGED_ADMIN" "$PACKAGED_RECOVERY" "$PACKAGED_INDEX"; do test -f "$file"; done
-          cmp native-bridge.js "$PACKAGED_BRIDGE"
-          cmp app.js "$PACKAGED_APP"
-          cmp admin.js "$PACKAGED_ADMIN"
-          cmp recovery.js "$PACKAGED_RECOVERY"
-          grep -q "SUPABASE_ORIGIN" "$PACKAGED_BRIDGE"
-          grep -q "LEGACY_ANON_KEY" "$PACKAGED_BRIDGE"
-          grep -q "Authorization" "$PACKAGED_BRIDGE"
-          grep -q "localhost" "$PACKAGED_BRIDGE"
-          grep -q "AICH_SESSION_30D_V1" "$PACKAGED_APP"
-          grep -q "AICH_SESSION_INTEGRATION_V1" "$PACKAGED_APP"
-          grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" "$PACKAGED_APP"
-          grep -q "grant_type=refresh_token" "$PACKAGED_APP"
-          grep -q "window.AICHSession" "$PACKAGED_APP"
-          grep -q "if(!await ensureSession())" "$PACKAGED_APP"
-          grep -q "s.request(path,opt)" "$PACKAGED_ADMIN"
-          grep -q "await s.ensure()" "$PACKAGED_ADMIN"
-          grep -q "window.AICHSession.save" "$PACKAGED_RECOVERY"
-          grep -q "마감임박순" "$PACKAGED_APP"
-          grep -q "상금 높은 순" "$PACKAGED_APP"
-          grep -q "globalGrid" "$PACKAGED_APP"
-          grep -q "/native-bridge.js" "$PACKAGED_INDEX"
-          grep -q "/app.js?v=105" "$PACKAGED_INDEX"
-          grep -q "/admin.js?v=105" "$PACKAGED_INDEX"
-          grep -q "/recovery.js?v=105" "$PACKAGED_INDEX"
-          grep -q "AI Contest Hub v1.4" "$PACKAGED_INDEX"
-          echo "PACKAGED_WEB_ASSETS_VALID"
+          W=android/app/src/main/assets/public
+          for f in native-bridge.js app.js admin.js recovery.js index.html; do test -f "$W/$f"; done
+          cmp app.js "$W/app.js"
+          cmp admin.js "$W/admin.js"
+          cmp recovery.js "$W/recovery.js"
+          grep -q 'AI Contest Hub v1.5' "$W/index.html"
+          grep -q 'AICH_SESSION_30D_V1' "$W/app.js"
+          grep -q 'AICH_SESSION_INTEGRATION_V1' "$W/app.js"
+          R=android/app/src/main/res
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do for f in ic_launcher.png ic_launcher_round.png ic_launcher_foreground.png ic_launcher_monochrome.png; do test -f "$R/mipmap-$d/$f"; done; done
+          test -f "$R/mipmap-anydpi-v26/ic_launcher.xml"
+          test -f "$R/mipmap-anydpi-v33/ic_launcher.xml"
+          grep -q ic_launcher_foreground "$R/mipmap-anydpi-v26/ic_launcher.xml"
+          grep -q ic_launcher_monochrome "$R/mipmap-anydpi-v33/ic_launcher.xml"
+          test -f assets/play-store-icon-512.png
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          for p,w,h in [
+            ('assets/play-store-icon-512.png',512,512),
+            ('android/app/src/main/res/mipmap-mdpi/ic_launcher.png',48,48),
+            ('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',192,192),
+            ('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',432,432)]:
+            b=Path(p).read_bytes()
+            if b[:8]!=b'\x89PNG\r\n\x1a\n' or struct.unpack('>II',b[16:24])!=(w,h): raise SystemExit('invalid icon '+p)
+          print('ICON_DIMENSIONS_VALID')
+          PY
 
-      - name: Set Android version 5
+      - name: Set Android version 6
         run: |
-          set -euo pipefail
-          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 5/' android/app/build.gradle
-          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.4"/' android/app/build.gradle
-          grep -nE 'versionCode|versionName' android/app/build.gradle
-          grep -qE 'versionCode[[:space:]]+5' android/app/build.gradle
-          grep -qE 'versionName[[:space:]]+"1\.4"' android/app/build.gradle
-
-      - name: Show Android SDK levels
-        run: |
-          grep -R "compileSdk" -n android | head -20 || true
-          grep -R "targetSdk" -n android | head -20 || true
-
-      - name: Build debug APK
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 6/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.5"/' android/app/build.gradle
+          grep -qE 'versionCode[[:space:]]+6' android/app/build.gradle
+          grep -qE 'versionName[[:space:]]+"1\.5"' android/app/build.gradle
 
       - name: Build release AAB
         working-directory: android
-        run: ./gradlew bundleRelease --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
 
-      - name: Verify release bundle contents
+      - name: Verify release bundle
         run: |
           set -euo pipefail
-          SOURCE_AAB="android/app/build/outputs/bundle/release/app-release.aab"
-          test -f "$SOURCE_AAB"
-          unzip -p "$SOURCE_AAB" base/assets/public/native-bridge.js > "$RUNNER_TEMP/native-bridge-from-aab.js"
-          unzip -p "$SOURCE_AAB" base/assets/public/app.js > "$RUNNER_TEMP/app-from-aab.js"
-          unzip -p "$SOURCE_AAB" base/assets/public/admin.js > "$RUNNER_TEMP/admin-from-aab.js"
-          unzip -p "$SOURCE_AAB" base/assets/public/recovery.js > "$RUNNER_TEMP/recovery-from-aab.js"
-          unzip -p "$SOURCE_AAB" base/assets/public/index.html > "$RUNNER_TEMP/index-from-aab.html"
-          cmp native-bridge.js "$RUNNER_TEMP/native-bridge-from-aab.js"
-          cmp app.js "$RUNNER_TEMP/app-from-aab.js"
-          cmp admin.js "$RUNNER_TEMP/admin-from-aab.js"
-          cmp recovery.js "$RUNNER_TEMP/recovery-from-aab.js"
-          grep -q "https://pkfaaezbwnkgjfgpovzo.supabase.co" "$RUNNER_TEMP/native-bridge-from-aab.js"
-          grep -q "LEGACY_ANON_KEY" "$RUNNER_TEMP/native-bridge-from-aab.js"
-          grep -q "Authorization" "$RUNNER_TEMP/native-bridge-from-aab.js"
-          grep -q "localhost" "$RUNNER_TEMP/native-bridge-from-aab.js"
-          grep -q "AICH_SESSION_30D_V1" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "AICH_SESSION_INTEGRATION_V1" "$RUNNER_TEMP/app-from-aab.js"
-          grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "grant_type=refresh_token" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "refreshPromise" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "aich_session_started_at" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "window.AICHSession" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "if(!await ensureSession())" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "s.request(path,opt)" "$RUNNER_TEMP/admin-from-aab.js"
-          grep -q "await s.ensure()" "$RUNNER_TEMP/admin-from-aab.js"
-          grep -q "window.AICHSession.save" "$RUNNER_TEMP/recovery-from-aab.js"
-          grep -q "마감임박순" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "상금 높은 순" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "globalGrid" "$RUNNER_TEMP/app-from-aab.js"
-          grep -q "/native-bridge.js" "$RUNNER_TEMP/index-from-aab.html"
-          grep -q "/app.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
-          grep -q "/admin.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
-          grep -q "/recovery.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
-          grep -q "AI Contest Hub v1.4" "$RUNNER_TEMP/index-from-aab.html"
-          echo "RELEASE_BUNDLE_CONTENTS_VALID"
+          A=android/app/build/outputs/bundle/release/app-release.aab
+          test -f "$A"
+          unzip -p "$A" base/assets/public/app.js > "$RUNNER_TEMP/app.js"
+          unzip -p "$A" base/assets/public/index.html > "$RUNNER_TEMP/index.html"
+          cmp app.js "$RUNNER_TEMP/app.js"
+          grep -q 'AI Contest Hub v1.5' "$RUNNER_TEMP/index.html"
+          grep -q 'AICH_SESSION_30D_V1' "$RUNNER_TEMP/app.js"
+          unzip -Z1 "$A" > "$RUNNER_TEMP/aab-files.txt"
+          grep -q 'base/res/mipmap-mdpi-v4/ic_launcher.png' "$RUNNER_TEMP/aab-files.txt"
+          grep -q 'base/res/mipmap-xxxhdpi-v4/ic_launcher_foreground.png' "$RUNNER_TEMP/aab-files.txt"
+          grep -q 'base/res/mipmap-anydpi-v26/ic_launcher.xml' "$RUNNER_TEMP/aab-files.txt"
+          echo RELEASE_BUNDLE_VALID
 
-      - name: Validate signing inputs
+      - name: Validate upload signing key
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          EXPECTED_KEYSTORE_SHA256: 76985cea622be0ec9bae6072ad2b64b19c7072b32c6e9cde5ad888956494510f
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEYSTORE_BASE64"; exit 11; }
-          test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEYSTORE_PASSWORD"; exit 12; }
-          test -n "$ANDROID_KEY_ALIAS" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEY_ALIAS"; exit 13; }
-          test -n "$ANDROID_KEY_PASSWORD" || { echo "SIGNING_SECRET_MISSING: ANDROID_KEY_PASSWORD"; exit 14; }
+          test -n "$KS"; test -n "$SP"; test -n "$ALIAS"; test -n "$KP"
+          printf '%s' "$KS" | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          test "$(sha256sum "$RUNNER_TEMP/upload.jks" | awk '{print $1}')" = '76985cea622be0ec9bae6072ad2b64b19c7072b32c6e9cde5ad888956494510f'
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -alias "$ALIAS" >/dev/null
 
-          KEYSTORE="$RUNNER_TEMP/aich-upload-keystore.jks"
-          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE"; then
-            echo "SIGNING_BASE64_INVALID"
-            exit 21
-          fi
-
-          ACTUAL_SHA256="$(sha256sum "$KEYSTORE" | awk '{print $1}')"
-          if [ "$ACTUAL_SHA256" != "$EXPECTED_KEYSTORE_SHA256" ]; then
-            echo "SIGNING_KEYSTORE_MISMATCH"
-            exit 22
-          fi
-
-          if ! keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-            echo "SIGNING_STORE_PASSWORD_INVALID"
-            exit 23
-          fi
-
-          if ! keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "SIGNING_ALIAS_INVALID"
-            exit 24
-          fi
-
-          echo "SIGNING_INPUTS_VALID"
-
-      - name: Sign release AAB
+      - name: Sign and verify final AAB
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          KEYSTORE="$RUNNER_TEMP/aich-upload-keystore.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE"
+          SRC=android/app/build/outputs/bundle/release/app-release.aab
+          OUT=android/app/build/outputs/bundle/release/AI-Contest-Hub-1.5-build6-signed.aab
+          cp "$SRC" "$OUT"
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -keypass "$KP" "$OUT" "$ALIAS"
+          jarsigner -verify -verbose -certs "$OUT" | tee "$RUNNER_TEMP/signature.txt"
+          grep -q 'jar verified' "$RUNNER_TEMP/signature.txt"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          rm -f "$RUNNER_TEMP/upload.jks"
 
-          SOURCE_AAB="android/app/build/outputs/bundle/release/app-release.aab"
-          test -f "$SOURCE_AAB" || { echo "Release AAB not found"; exit 1; }
-          SIGNED_AAB="android/app/build/outputs/bundle/release/AI-Contest-Hub-1.4-build5-signed.aab"
-          cp "$SOURCE_AAB" "$SIGNED_AAB"
-
-          jarsigner \
-            -sigalg SHA256withRSA \
-            -digestalg SHA-256 \
-            -keystore "$KEYSTORE" \
-            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
-            -keypass "$ANDROID_KEY_PASSWORD" \
-            "$SIGNED_AAB" \
-            "$ANDROID_KEY_ALIAS"
-
-          jarsigner -verify -verbose -certs "$SIGNED_AAB"
-          sha256sum "$SIGNED_AAB" | tee "$SIGNED_AAB.sha256"
-          keytool -printcert -jarfile "$SIGNED_AAB" | grep -E 'Owner:|SHA256:'
-          rm -f "$KEYSTORE"
-
-      - name: Upload debug APK
+      - name: Upload Play Console package
         uses: actions/upload-artifact@v4
         with:
-          name: ai-contest-hub-debug-apk-v5-final
-          path: android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Upload unsigned release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-contest-hub-release-aab-unsigned-v5-final
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-
-      - name: Upload signed release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-contest-hub-release-aab-signed-v5-final
+          name: ai-contest-hub-1.5-build6-play-package
           path: |
-            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.4-build5-signed.aab
-            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.4-build5-signed.aab.sha256
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.5-build6-signed.aab
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.5-build6-signed.aab.sha256
+            assets/play-store-icon-512.png
           if-no-files-found: error

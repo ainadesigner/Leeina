@@ -17,7 +17,7 @@ html=html.replace(
   /<script src="\/app\.js\?v=\d+" defer><\/script>/,
   '<script src="/native-bridge.js" defer></script>\n$&'
 );
-html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.4');
+html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.5');
 await writeFile(indexPath,html,'utf8');
 
-console.log('Prepared Capacitor web assets in www/ for Android 1.4');
+console.log('Prepared Capacitor web assets in www/ for Android 1.5');
