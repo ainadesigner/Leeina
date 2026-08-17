@@ -14,10 +14,10 @@ for(const file of files){
 const indexPath=resolve(out,'index.html');
 let html=await readFile(indexPath,'utf8');
 html=html.replace(
-  '<script src="/app.js?v=103" defer></script>',
-  '<script src="/native-bridge.js" defer></script>\n<script src="/app.js?v=103" defer></script>'
+  /<script src="\/app\.js\?v=\d+" defer><\/script>/,
+  '<script src="/native-bridge.js" defer></script>\n$&'
 );
-html=html.replace('AI Contest Hub v1.2','AI Contest Hub v1.3');
+html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.4');
 await writeFile(indexPath,html,'utf8');
 
-console.log('Prepared Capacitor web assets in www/ for Android 1.3');
+console.log('Prepared Capacitor web assets in www/ for Android 1.4');
