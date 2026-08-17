@@ -33,16 +33,26 @@ jobs:
         run: |
           set -euo pipefail
           node --check app.js
+          node --check admin.js
+          node --check recovery.js
           grep -q "AICH_DISCOVERY_SORT_V1" app.js
           grep -q "AICH_SESSION_30D_V1" app.js
+          grep -q "AICH_SESSION_INTEGRATION_V1" app.js
           grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" app.js
           grep -q "grant_type=refresh_token" app.js
           grep -q "refreshPromise" app.js
           grep -q "aich_session_started_at" app.js
+          grep -q "window.AICHSession" app.js
+          grep -q "if(!await ensureSession())" app.js
+          grep -q "s.request(path,opt)" admin.js
+          grep -q "await s.ensure()" admin.js
+          grep -q "window.AICHSession.save" recovery.js
           grep -q "마감임박순" app.js
           grep -q "상금 높은 순" app.js
           grep -q "globalGrid" app.js
           grep -q "/app.js?v=105" index.html
+          grep -q "/admin.js?v=105" index.html
+          grep -q "/recovery.js?v=105" index.html
           grep -q "AI Contest Hub v1.4" index.html
           echo "ANDROID_1_4_SOURCE_VALID"
 
@@ -73,25 +83,37 @@ jobs:
       - name: Verify packaged web assets
         run: |
           set -euo pipefail
-          PACKAGED_BRIDGE="android/app/src/main/assets/public/native-bridge.js"
-          PACKAGED_APP="android/app/src/main/assets/public/app.js"
-          PACKAGED_INDEX="android/app/src/main/assets/public/index.html"
-          test -f "$PACKAGED_BRIDGE"
-          test -f "$PACKAGED_APP"
-          test -f "$PACKAGED_INDEX"
+          ASSET_DIR="android/app/src/main/assets/public"
+          PACKAGED_BRIDGE="$ASSET_DIR/native-bridge.js"
+          PACKAGED_APP="$ASSET_DIR/app.js"
+          PACKAGED_ADMIN="$ASSET_DIR/admin.js"
+          PACKAGED_RECOVERY="$ASSET_DIR/recovery.js"
+          PACKAGED_INDEX="$ASSET_DIR/index.html"
+          for file in "$PACKAGED_BRIDGE" "$PACKAGED_APP" "$PACKAGED_ADMIN" "$PACKAGED_RECOVERY" "$PACKAGED_INDEX"; do test -f "$file"; done
           cmp native-bridge.js "$PACKAGED_BRIDGE"
           cmp app.js "$PACKAGED_APP"
+          cmp admin.js "$PACKAGED_ADMIN"
+          cmp recovery.js "$PACKAGED_RECOVERY"
           grep -q "SUPABASE_ORIGIN" "$PACKAGED_BRIDGE"
           grep -q "LEGACY_ANON_KEY" "$PACKAGED_BRIDGE"
           grep -q "Authorization" "$PACKAGED_BRIDGE"
           grep -q "localhost" "$PACKAGED_BRIDGE"
           grep -q "AICH_SESSION_30D_V1" "$PACKAGED_APP"
+          grep -q "AICH_SESSION_INTEGRATION_V1" "$PACKAGED_APP"
           grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" "$PACKAGED_APP"
           grep -q "grant_type=refresh_token" "$PACKAGED_APP"
+          grep -q "window.AICHSession" "$PACKAGED_APP"
+          grep -q "if(!await ensureSession())" "$PACKAGED_APP"
+          grep -q "s.request(path,opt)" "$PACKAGED_ADMIN"
+          grep -q "await s.ensure()" "$PACKAGED_ADMIN"
+          grep -q "window.AICHSession.save" "$PACKAGED_RECOVERY"
           grep -q "마감임박순" "$PACKAGED_APP"
           grep -q "상금 높은 순" "$PACKAGED_APP"
           grep -q "globalGrid" "$PACKAGED_APP"
           grep -q "/native-bridge.js" "$PACKAGED_INDEX"
+          grep -q "/app.js?v=105" "$PACKAGED_INDEX"
+          grep -q "/admin.js?v=105" "$PACKAGED_INDEX"
+          grep -q "/recovery.js?v=105" "$PACKAGED_INDEX"
           grep -q "AI Contest Hub v1.4" "$PACKAGED_INDEX"
           echo "PACKAGED_WEB_ASSETS_VALID"
 
@@ -126,22 +148,35 @@ jobs:
           test -f "$SOURCE_AAB"
           unzip -p "$SOURCE_AAB" base/assets/public/native-bridge.js > "$RUNNER_TEMP/native-bridge-from-aab.js"
           unzip -p "$SOURCE_AAB" base/assets/public/app.js > "$RUNNER_TEMP/app-from-aab.js"
+          unzip -p "$SOURCE_AAB" base/assets/public/admin.js > "$RUNNER_TEMP/admin-from-aab.js"
+          unzip -p "$SOURCE_AAB" base/assets/public/recovery.js > "$RUNNER_TEMP/recovery-from-aab.js"
           unzip -p "$SOURCE_AAB" base/assets/public/index.html > "$RUNNER_TEMP/index-from-aab.html"
           cmp native-bridge.js "$RUNNER_TEMP/native-bridge-from-aab.js"
           cmp app.js "$RUNNER_TEMP/app-from-aab.js"
+          cmp admin.js "$RUNNER_TEMP/admin-from-aab.js"
+          cmp recovery.js "$RUNNER_TEMP/recovery-from-aab.js"
           grep -q "https://pkfaaezbwnkgjfgpovzo.supabase.co" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "LEGACY_ANON_KEY" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "Authorization" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "localhost" "$RUNNER_TEMP/native-bridge-from-aab.js"
           grep -q "AICH_SESSION_30D_V1" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "AICH_SESSION_INTEGRATION_V1" "$RUNNER_TEMP/app-from-aab.js"
           grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "grant_type=refresh_token" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "refreshPromise" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "aich_session_started_at" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "window.AICHSession" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "if(!await ensureSession())" "$RUNNER_TEMP/app-from-aab.js"
+          grep -q "s.request(path,opt)" "$RUNNER_TEMP/admin-from-aab.js"
+          grep -q "await s.ensure()" "$RUNNER_TEMP/admin-from-aab.js"
+          grep -q "window.AICHSession.save" "$RUNNER_TEMP/recovery-from-aab.js"
           grep -q "마감임박순" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "상금 높은 순" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "globalGrid" "$RUNNER_TEMP/app-from-aab.js"
           grep -q "/native-bridge.js" "$RUNNER_TEMP/index-from-aab.html"
+          grep -q "/app.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
+          grep -q "/admin.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
+          grep -q "/recovery.js?v=105" "$RUNNER_TEMP/index-from-aab.html"
           grep -q "AI Contest Hub v1.4" "$RUNNER_TEMP/index-from-aab.html"
           echo "RELEASE_BUNDLE_CONTENTS_VALID"
 
