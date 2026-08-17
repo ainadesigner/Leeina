@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - scripts/apply-session-30d.py
+      - scripts/apply-session-integration.py
       - .github/workflows/apply-session-30d.yml
   workflow_dispatch:
 
@@ -22,30 +23,42 @@ jobs:
           fetch-depth: 0
 
       - name: Apply 30-day session persistence
-        run: python scripts/apply-session-30d.py
+        run: |
+          python scripts/apply-session-30d.py
+          python scripts/apply-session-integration.py
 
       - name: Validate JavaScript and required session logic
         run: |
           set -euo pipefail
           node --check app.js
+          node --check admin.js
+          node --check recovery.js
           grep -q "AICH_SESSION_30D_V1" app.js
-          grep -q "SESSION_MAX_AGE_MS=30\*24\*60\*60\*1000" app.js
+          grep -q "AICH_SESSION_INTEGRATION_V1" app.js
+          grep -qF "SESSION_MAX_AGE_MS=30*24*60*60*1000" app.js
           grep -q "grant_type=refresh_token" app.js
           grep -q "refreshPromise" app.js
           grep -q "aich_session_started_at" app.js
+          grep -q "window.AICHSession" app.js
+          grep -q "if(!await ensureSession())" app.js
+          grep -q "s.request(path,opt)" admin.js
+          grep -q "await s.ensure()" admin.js
+          grep -q "window.AICHSession.save" recovery.js
           grep -q "/app.js?v=105" index.html
+          grep -q "/admin.js?v=105" index.html
+          grep -q "/recovery.js?v=105" index.html
           grep -q "AI Contest Hub v1.4" index.html
-          echo "SESSION_30D_VALID"
+          echo "SESSION_30D_INTEGRATION_VALID"
 
       - name: Commit generated session update
         run: |
           set -euo pipefail
-          if git diff --quiet -- app.js index.html; then
+          if git diff --quiet -- app.js admin.js recovery.js index.html; then
             echo "No app changes required"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.js index.html
-          git commit -m "Add secure 30-day login persistence"
+          git add app.js admin.js recovery.js index.html
+          git commit -m "Complete secure 30-day session integration"
           git push origin HEAD:main
