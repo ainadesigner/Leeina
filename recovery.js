@@ -41,8 +41,10 @@ btn.onclick=async()=>{
     const r=await fetch(API+'/auth/v1/user',{method:'PUT',headers:{apikey:KEY,Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({password:value})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.msg||d.message||'변경 실패');
-    localStorage.setItem('aich_access_token',accessToken);
-    const refresh=hash.get('refresh_token');if(refresh)localStorage.setItem('aich_refresh_token',refresh);
+    const refresh=hash.get('refresh_token');
+    const sessionData={access_token:accessToken,refresh_token:refresh||'',expires_at:Number(hash.get('expires_at')||0),expires_in:Number(hash.get('expires_in')||0)};
+    if(window.AICHSession&&typeof window.AICHSession.save==='function')window.AICHSession.save(sessionData,{fresh:true});
+    else{localStorage.setItem('aich_access_token',accessToken);if(refresh)localStorage.setItem('aich_refresh_token',refresh);localStorage.setItem('aich_session_started_at',String(Date.now()));localStorage.removeItem('aich_access_expires_at');}
     history.replaceState({},'',location.pathname+location.search.replace(/([?&])password_recovery=1(&|$)/,'$1').replace(/[?&]$/,''));
     msg.textContent='비밀번호가 변경되었습니다. 잠시 후 MY 화면으로 이동합니다.';
     setTimeout(()=>location.reload(),900);
