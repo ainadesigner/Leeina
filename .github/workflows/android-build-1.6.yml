@@ -9,7 +9,7 @@ jobs:
   build-android-1-6:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -119,6 +119,19 @@ jobs:
           grep -q 'jar verified' "$RUNNER_TEMP/signature.txt"
           sha256sum "$OUT" | tee "$OUT.sha256"
           rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Publish build7 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab
+          TAG=android-1.6-build7
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$OUT" "$OUT.sha256" --clobber
+          else
+            gh release create "$TAG" "$OUT" "$OUT.sha256" --title "AI Contest Hub 1.6 build7" --notes "Google Play Console signed AAB. Poster cards use 3:4 contain layout and a smaller D-Day badge." --target "$GITHUB_SHA"
+          fi
 
       - name: Upload Play Console package
         uses: actions/upload-artifact@v4
