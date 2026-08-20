@@ -1,0 +1,131 @@
+name: Android Build 1.6 Poster Cards
+
+on:
+  push:
+    branches: [agent/android-capacitor]
+  workflow_dispatch:
+
+jobs:
+  build-android-1-6:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate source
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check admin.js
+          node --check recovery.js
+          node --check scripts/prepare-capacitor.mjs
+          grep -q 'aspect-ratio:3/4' android-card-tuning.css
+          grep -q 'object-fit:contain' android-card-tuning.css
+          grep -q 'font-size:11px' android-card-tuning.css
+          grep -q 'AI Contest Hub v1.6' scripts/prepare-capacitor.mjs
+
+      - name: Test native API bridge
+        run: npm run test:native-bridge
+
+      - name: Reconstruct exact icon sources
+        run: |
+          set -euo pipefail
+          node scripts/reconstruct-icons.mjs
+          test "$(sha256sum assets/icon-play.png | awk '{print $1}')" = 'e8244395b02b5f0412b0d205f10687085e3b2203a194ec4ee82cf6d04d9ba808'
+          test "$(sha256sum assets/icon-foreground.png | awk '{print $1}')" = '425ebec5fed6ad1d850758657ece6ed2a9bfe485ac45545fe51fc2c6ff7e74d5'
+
+      - name: Generate Android project
+        run: npm run android:init
+
+      - name: Verify packaged web assets
+        run: |
+          set -euo pipefail
+          W=android/app/src/main/assets/public
+          test -f "$W/android-card-tuning.css"
+          grep -q 'android-card-tuning.css?v=160' "$W/index.html"
+          grep -q 'AI Contest Hub v1.6' "$W/index.html"
+          grep -q 'aspect-ratio:3/4' "$W/android-card-tuning.css"
+          grep -q 'object-fit:contain' "$W/android-card-tuning.css"
+          grep -q 'font-size:11px' "$W/android-card-tuning.css"
+
+      - name: Set Android version 7
+        run: |
+          set -euo pipefail
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 7/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.6"/' android/app/build.gradle
+          grep -qE 'versionCode[[:space:]]+7' android/app/build.gradle
+          grep -qE 'versionName[[:space:]]+"1\.6"' android/app/build.gradle
+
+      - name: Build release AAB
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Verify release bundle contents
+        run: |
+          set -euo pipefail
+          A=android/app/build/outputs/bundle/release/app-release.aab
+          test -f "$A"
+          unzip -p "$A" base/assets/public/android-card-tuning.css > "$RUNNER_TEMP/android-card-tuning.css"
+          grep -q 'aspect-ratio:3/4' "$RUNNER_TEMP/android-card-tuning.css"
+          grep -q 'font-size:11px' "$RUNNER_TEMP/android-card-tuning.css"
+          unzip -p "$A" base/assets/public/index.html > "$RUNNER_TEMP/index.html"
+          grep -q 'AI Contest Hub v1.6' "$RUNNER_TEMP/index.html"
+          echo RELEASE_BUNDLE_CONTENTS_VALID
+
+      - name: Validate upload signing key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KS"; test -n "$SP"; test -n "$ALIAS"; test -n "$KP"
+          printf '%s' "$KS" | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          test "$(sha256sum "$RUNNER_TEMP/upload.jks" | awk '{print $1}')" = '76985cea622be0ec9bae6072ad2b64b19c7072b32c6e9cde5ad888956494510f'
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -alias "$ALIAS" >/dev/null
+
+      - name: Sign and verify final AAB
+        env:
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SRC=android/app/build/outputs/bundle/release/app-release.aab
+          OUT=android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab
+          cp "$SRC" "$OUT"
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -keypass "$KP" "$OUT" "$ALIAS"
+          jarsigner -verify -verbose -certs "$OUT" | tee "$RUNNER_TEMP/signature.txt"
+          grep -q 'jar verified' "$RUNNER_TEMP/signature.txt"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Upload Play Console package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-contest-hub-1.6-build7-play-package
+          path: |
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab.sha256
+            assets/play-store-icon-512.png
+          if-no-files-found: error
