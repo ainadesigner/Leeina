@@ -1,0 +1,8 @@
+{
+  "appId": "com.aicontesrhub.app",
+  "appName": "AI Contest Hub",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#061813"
+  }
+}
