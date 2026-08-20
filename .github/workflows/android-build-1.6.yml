@@ -142,3 +142,22 @@ jobs:
             android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab.sha256
             assets/play-store-icon-512.png
           if-no-files-found: error
+
+      - name: Publish signed AAB to android-artifacts branch
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/android/app/build/outputs/bundle/release/AI-Contest-Hub-1.6-build7-signed.aab"
+          SHA="$OUT.sha256"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin android-artifacts
+          ART="$RUNNER_TEMP/android-artifacts"
+          git worktree add -B android-artifacts "$ART" origin/android-artifacts
+          mkdir -p "$ART/releases"
+          cp "$OUT" "$ART/releases/AI-Contest-Hub-1.6-build7-signed.aab"
+          cp "$SHA" "$ART/releases/AI-Contest-Hub-1.6-build7-signed.aab.sha256"
+          git -C "$ART" add -f releases/AI-Contest-Hub-1.6-build7-signed.aab releases/AI-Contest-Hub-1.6-build7-signed.aab.sha256
+          if ! git -C "$ART" diff --cached --quiet; then
+            git -C "$ART" commit -m "Publish AI Contest Hub 1.6 build7 signed AAB"
+            git -C "$ART" push origin HEAD:android-artifacts
+          fi
