@@ -1,0 +1,36 @@
+/* AI Contest Hub Android detail save v1.7 */
+.detailTitleActionRow{
+  display:flex;
+  align-items:flex-end;
+  gap:14px;
+  margin:14px 0 8px;
+}
+.detailTitleActionRow .detailTitle{
+  flex:1;
+  min-width:0;
+  margin:0;
+}
+.detailSave{
+  flex:0 0 auto;
+  width:46px;
+  height:46px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.22);
+  background:#08251d;
+  color:#f7fbf9;
+  display:grid;
+  place-items:center;
+  font-size:30px;
+  line-height:1;
+  padding:0;
+  margin:0 0 2px;
+  cursor:pointer;
+}
+.detailSave.on{
+  color:var(--pink);
+  border-color:rgba(255,90,165,.45);
+  background:rgba(255,90,165,.08);
+}
+.detailSave:active{
+  transform:scale(.94);
+}
