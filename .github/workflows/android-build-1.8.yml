@@ -1,0 +1,177 @@
+name: Android Build 1.8 System Back
+
+on:
+  push:
+    branches: [agent/android-system-back]
+  workflow_dispatch:
+
+jobs:
+  build-android-1-8:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate source
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check admin.js
+          node --check recovery.js
+          node --check android-detail-save.js
+          node --check android-system-back.js
+          node --check scripts/prepare-capacitor.mjs
+          grep -q 'AICH_ANDROID_DETAIL_SAVE_V1' android-detail-save.js
+          grep -q 'AICH_ANDROID_SYSTEM_BACK_V1' android-system-back.js
+          grep -q 'history.pushState' android-system-back.js
+          grep -q "classList.remove('open')" android-system-back.js
+          grep -q 'aspect-ratio:3/4' android-card-tuning.css
+          grep -q 'font-size:11px' android-card-tuning.css
+          grep -q 'AI Contest Hub v1.8' scripts/prepare-capacitor.mjs
+
+      - name: Test native API bridge
+        run: npm run test:native-bridge
+
+      - name: Smoke test Supabase public API
+        run: |
+          set -euo pipefail
+          KEY="$(node -e "const s=require('fs').readFileSync('native-bridge.js','utf8');const m=s.match(/const LEGACY_ANON_KEY='([^']+)'/);if(!m)process.exit(1);process.stdout.write(m[1])")"
+          CODE="$(curl -sS -o "$RUNNER_TEMP/smoke.json" -w '%{http_code}' 'https://pkfaaezbwnkgjfgpovzo.supabase.co/rest/v1/contests?status=eq.live&select=id&limit=1' -H "apikey: $KEY" -H "Authorization: Bearer $KEY")"
+          test "$CODE" = 200
+          echo SUPABASE_PUBLIC_API_OK
+
+      - name: Reconstruct exact icon sources
+        run: |
+          set -euo pipefail
+          node scripts/reconstruct-icons.mjs
+          test "$(sha256sum assets/icon-play.png | awk '{print $1}')" = 'e8244395b02b5f0412b0d205f10687085e3b2203a194ec4ee82cf6d04d9ba808'
+          test "$(sha256sum assets/icon-foreground.png | awk '{print $1}')" = '425ebec5fed6ad1d850758657ece6ed2a9bfe485ac45545fe51fc2c6ff7e74d5'
+
+      - name: Generate Android project
+        run: npm run android:init
+
+      - name: Verify packaged web assets
+        run: |
+          set -euo pipefail
+          W=android/app/src/main/assets/public
+          for f in native-bridge.js app.js admin.js recovery.js index.html android-card-tuning.css android-detail-save.css android-detail-save.js android-system-back.js; do test -f "$W/$f"; done
+          grep -q 'android-card-tuning.css?v=160' "$W/index.html"
+          grep -q 'android-detail-save.css?v=170' "$W/index.html"
+          grep -q 'android-detail-save.js?v=170' "$W/index.html"
+          grep -q 'android-system-back.js?v=180' "$W/index.html"
+          grep -q 'AI Contest Hub v1.8' "$W/index.html"
+          grep -q 'AICH_ANDROID_SYSTEM_BACK_V1' "$W/android-system-back.js"
+
+      - name: Set Android version 9
+        run: |
+          set -euo pipefail
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 9/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.8"/' android/app/build.gradle
+          grep -qE 'versionCode[[:space:]]+9' android/app/build.gradle
+          grep -qE 'versionName[[:space:]]+"1\.8"' android/app/build.gradle
+
+      - name: Build release AAB
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Verify release bundle contents
+        run: |
+          set -euo pipefail
+          A=android/app/build/outputs/bundle/release/app-release.aab
+          test -f "$A"
+          unzip -p "$A" base/assets/public/android-system-back.js > "$RUNNER_TEMP/android-system-back.js"
+          unzip -p "$A" base/assets/public/index.html > "$RUNNER_TEMP/index.html"
+          grep -q 'AICH_ANDROID_SYSTEM_BACK_V1' "$RUNNER_TEMP/android-system-back.js"
+          grep -q 'history.pushState' "$RUNNER_TEMP/android-system-back.js"
+          grep -q 'AI Contest Hub v1.8' "$RUNNER_TEMP/index.html"
+          echo RELEASE_BUNDLE_CONTENTS_VALID
+
+      - name: Validate upload signing key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KS"; test -n "$SP"; test -n "$ALIAS"; test -n "$KP"
+          printf '%s' "$KS" | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          test "$(sha256sum "$RUNNER_TEMP/upload.jks" | awk '{print $1}')" = '76985cea622be0ec9bae6072ad2b64b19c7072b32c6e9cde5ad888956494510f'
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -alias "$ALIAS" >/dev/null
+
+      - name: Sign and verify final AAB
+        env:
+          SP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SRC=android/app/build/outputs/bundle/release/app-release.aab
+          OUT=android/app/build/outputs/bundle/release/AI-Contest-Hub-1.8-build9-signed.aab
+          cp "$SRC" "$OUT"
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" -keypass "$KP" "$OUT" "$ALIAS"
+          jarsigner -verify -verbose -certs "$OUT" | tee "$RUNNER_TEMP/signature.txt"
+          grep -q 'jar verified' "$RUNNER_TEMP/signature.txt"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Publish build9 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT=android/app/build/outputs/bundle/release/AI-Contest-Hub-1.8-build9-signed.aab
+          TAG=android-1.8-build9
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$OUT" "$OUT.sha256" --clobber
+          else
+            gh release create "$TAG" "$OUT" "$OUT.sha256" --title "AI Contest Hub 1.8 build9" --notes "Google Play Console signed AAB. Android system Back now closes an open opportunity detail modal exactly like the X button, while preserving the 3:4 poster cards, smaller D-Day badges, and detail save heart." --target "$GITHUB_SHA"
+          fi
+
+      - name: Upload Play Console package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-contest-hub-1.8-build9-play-package
+          path: |
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.8-build9-signed.aab
+            android/app/build/outputs/bundle/release/AI-Contest-Hub-1.8-build9-signed.aab.sha256
+            assets/play-store-icon-512.png
+          if-no-files-found: error
+
+      - name: Publish signed AAB to android-artifacts branch
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/android/app/build/outputs/bundle/release/AI-Contest-Hub-1.8-build9-signed.aab"
+          SHA="$OUT.sha256"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin android-artifacts
+          ART="$RUNNER_TEMP/android-artifacts"
+          git worktree add -B android-artifacts "$ART" origin/android-artifacts
+          mkdir -p "$ART/releases"
+          cp "$OUT" "$ART/releases/AI-Contest-Hub-1.8-build9-signed.aab"
+          cp "$SHA" "$ART/releases/AI-Contest-Hub-1.8-build9-signed.aab.sha256"
+          git -C "$ART" add -f releases/AI-Contest-Hub-1.8-build9-signed.aab releases/AI-Contest-Hub-1.8-build9-signed.aab.sha256
+          if ! git -C "$ART" diff --cached --quiet; then
+            git -C "$ART" commit -m "Publish AI Contest Hub 1.8 build9 signed AAB"
+            git -C "$ART" push origin HEAD:android-artifacts
+          fi
