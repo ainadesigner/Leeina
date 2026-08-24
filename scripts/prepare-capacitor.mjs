@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 const root=process.cwd();
 const out=resolve(root,'www');
-const files=['index.html','style.css','android-card-tuning.css','android-detail-save.css','admin.css','app.js','admin.js','recovery.js','native-bridge.js','android-detail-save.js'];
+const files=['index.html','style.css','android-card-tuning.css','android-detail-save.css','admin.css','app.js','admin.js','recovery.js','native-bridge.js','android-detail-save.js','android-system-back.js'];
 
 await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
@@ -19,9 +19,9 @@ html=html.replace(
 );
 html=html.replace(
   /<script src="\/app\.js\?v=\d+" defer><\/script>/,
-  '<script src="/native-bridge.js" defer></script>\n$&\n<script src="/android-detail-save.js?v=170" defer></script>'
+  '<script src="/native-bridge.js" defer></script>\n$&\n<script src="/android-detail-save.js?v=170" defer></script>\n<script src="/android-system-back.js?v=180" defer></script>'
 );
-html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.7');
+html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.8');
 await writeFile(indexPath,html,'utf8');
 
-console.log('Prepared Capacitor web assets in www/ for Android 1.7');
+console.log('Prepared Capacitor web assets in www/ for Android 1.8');
