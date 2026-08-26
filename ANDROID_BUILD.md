@@ -35,6 +35,7 @@ Open the generated `android/` project in Android Studio, then use **Build > Gene
 - `native-bridge.js` rewrites native WebView `/supa` requests to the production Vercel proxy.
 - Email confirmation and password-recovery redirect URLs are rewritten to the production web origin so emailed links remain valid.
 - The production web files are not changed by the Android preparation process. `scripts/prepare-capacitor.mjs` creates an Android-only `www/` copy and injects the bridge there.
+- Android 1.8 source fetches up to 1,000 LIVE opportunities so the app does not silently truncate the catalogue as the database grows beyond 500 records.
 
 ## Play submission note
 
