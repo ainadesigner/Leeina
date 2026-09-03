@@ -62,6 +62,7 @@ jobs:
           set -euo pipefail
           W=ios/App/App/public
           for f in index.html app.js native-bridge.js ios-shell.css android-card-tuning.css android-detail-save.css; do test -f "$W/$f"; done
+          test -d ios/App/App.xcodeproj
           grep -q 'AI Contest Hub v1.8' "$W/index.html"
           grep -q 'ios-shell.css?v=180' "$W/index.html"
           grep -q 'aspect-ratio:3/4' "$W/android-card-tuning.css"
@@ -71,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
