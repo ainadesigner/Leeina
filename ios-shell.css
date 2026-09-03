@@ -1,0 +1,29 @@
+/* AI Contest Hub iOS shell tuning */
+@supports (padding: max(0px)) {
+  .app {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+  .nav {
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .modal {
+    padding-top: calc(24px + env(safe-area-inset-top));
+  }
+  .sheet {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Keep form controls readable and prevent iOS auto-zoom on focus. */
+input, select, textarea, button {
+  font-size: max(16px, 1em);
+}
+
+/* Natural iOS touch behavior without changing the current visual design. */
+button, a, .card, .cat {
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
