@@ -3,6 +3,7 @@
   "version": "1.8.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/select-xcode-ci.mjs",
     "prepare:web": "node scripts/prepare-capacitor.mjs",
     "test:native-bridge": "node scripts/test-native-bridge.mjs",
     "android:icon": "node scripts/reconstruct-icons.mjs && java scripts/GenerateAndroidIcons.java",
