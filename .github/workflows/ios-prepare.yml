@@ -1,0 +1,88 @@
+name: iOS Prepare and Validate
+
+on:
+  push:
+    branches: [agent/ios-capacitor]
+  workflow_dispatch:
+
+jobs:
+  ios-validate:
+    runs-on: macos-15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate source
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check native-bridge.js
+          node --check android-detail-save.js
+          node --check android-system-back.js
+          node --check scripts/prepare-capacitor.mjs
+          grep -q '"@capacitor/ios": "8.4.2"' package.json
+          grep -q 'com.aicontesthub.app' capacitor.config.json
+          grep -q 'ios-shell.css' scripts/prepare-capacitor.mjs
+
+      - name: Prepare Capacitor iOS project
+        run: npm run ios:init
+
+      - name: Reconstruct app icon
+        run: |
+          set -euo pipefail
+          node scripts/reconstruct-icons.mjs
+          ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
+          test -d "$ICONSET"
+          sips -z 1024 1024 assets/icon-play.png --out "$ICONSET/AppIcon-512@2x.png" >/dev/null
+          test -f "$ICONSET/AppIcon-512@2x.png"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json')
+          data=json.loads(p.read_text())
+          for item in data.get('images',[]):
+              if item.get('size')=='1024x1024' or item.get('idiom')=='universal':
+                  item['filename']='AppIcon-512@2x.png'
+          p.write_text(json.dumps(data,indent=2)+"\n")
+          PY
+
+      - name: Verify packaged web assets
+        run: |
+          set -euo pipefail
+          W=ios/App/App/public
+          for f in index.html app.js native-bridge.js ios-shell.css android-card-tuning.css android-detail-save.css; do test -f "$W/$f"; done
+          grep -q 'AI Contest Hub v1.8' "$W/index.html"
+          grep -q 'ios-shell.css?v=180' "$W/index.html"
+          grep -q 'aspect-ratio:3/4' "$W/android-card-tuning.css"
+          grep -q 'detailSave' "$W/android-detail-save.css"
+
+      - name: Build iPhone simulator app without signing
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          test -d "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+
+      - name: Upload iOS validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-contest-hub-ios-1.8-simulator-validation
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
