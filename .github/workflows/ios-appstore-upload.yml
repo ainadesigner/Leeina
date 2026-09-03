@@ -1,0 +1,196 @@
+name: iOS App Store Build and Upload
+
+on:
+  push:
+    branches: [agent/ios-capacitor]
+  workflow_dispatch:
+
+jobs:
+  build-upload-ios:
+    runs-on: macos-15
+    permissions:
+      contents: read
+
+    env:
+      APP_BUNDLE_ID: com.aicontesthub.app
+      APP_NAME: AI Contest Hub
+      APP_VERSION: '1.0'
+      APP_BUILD: '1'
+      APPLE_TEAM_ID: Q4TL332FPY
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate App Store Connect secrets
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          PRIVATE_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_ID"
+          test -n "$ISSUER_ID"
+          test -n "$PRIVATE_KEY"
+          echo "App Store Connect credentials are present"
+
+      - name: Prepare App Store Connect API key
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          PRIVATE_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
+          printf '%s' "$PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Validate web source
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check native-bridge.js
+          node --check android-detail-save.js
+          node --check scripts/prepare-capacitor.mjs
+          grep -q 'com.aicontesthub.app' capacitor.config.json
+          grep -q '"@capacitor/ios": "8.4.2"' package.json
+
+      - name: Generate Capacitor iOS project
+        run: npm run ios:init
+
+      - name: Configure app icon
+        run: |
+          set -euo pipefail
+          node scripts/reconstruct-icons.mjs
+          ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
+          test -d "$ICONSET"
+          sips -z 1024 1024 assets/icon-play.png --out "$ICONSET/AppIcon-512@2x.png" >/dev/null
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json')
+          data=json.loads(p.read_text())
+          images=data.setdefault('images',[])
+          found=False
+          for item in images:
+              if item.get('size')=='1024x1024' or item.get('idiom')=='universal':
+                  item['filename']='AppIcon-512@2x.png'
+                  item['idiom']='universal'
+                  item['platform']='ios'
+                  item['size']='1024x1024'
+                  found=True
+          if not found:
+              images.append({'filename':'AppIcon-512@2x.png','idiom':'universal','platform':'ios','size':'1024x1024'})
+          p.write_text(json.dumps(data,indent=2)+"\n")
+          PY
+
+      - name: Verify packaged app
+        run: |
+          set -euo pipefail
+          W=ios/App/App/public
+          for f in index.html app.js native-bridge.js ios-shell.css android-card-tuning.css android-detail-save.css; do test -f "$W/$f"; done
+          grep -q 'AI Contest Hub v1.8' "$W/index.html"
+          grep -q 'aspect-ratio:3/4' "$W/android-card-tuning.css"
+          grep -q 'detailSave' "$W/android-detail-save.css"
+          xcodebuild -version
+
+      - name: Archive signed iOS app
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/AIContestHub.xcarchive"
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE" \
+            PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" \
+            PRODUCT_NAME="$APP_NAME" \
+            MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="$APP_BUILD" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            archive
+          test -d "$ARCHIVE"
+          echo "IOS_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Export App Store IPA
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          EXPORT_DIR="$RUNNER_TEMP/export"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>stripSwiftSymbols</key><true/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$IOS_ARCHIVE" \
+            -exportPath "$EXPORT_DIR" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+          IPA="$(find "$EXPORT_DIR" -maxdepth 1 -name '*.ipa' -print -quit)"
+          test -n "$IPA"
+          test -f "$IPA"
+          cp "$IPA" "$RUNNER_TEMP/AI-Contest-Hub-1.0-build1.ipa"
+          echo "IPA_PATH=$RUNNER_TEMP/AI-Contest-Hub-1.0-build1.ipa" >> "$GITHUB_ENV"
+
+      - name: Validate IPA metadata
+        run: |
+          set -euo pipefail
+          TMP="$RUNNER_TEMP/ipa-check"
+          mkdir -p "$TMP"
+          unzip -q "$IPA_PATH" -d "$TMP"
+          APP="$(find "$TMP/Payload" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -Fx "$APP_BUNDLE_ID"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist" | grep -Fx "$APP_VERSION"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist" | grep -Fx "$APP_BUILD"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          shasum -a 256 "$IPA_PATH"
+
+      - name: Upload IPA to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-contest-hub-ios-1.0-build1
+          path: ${{ runner.temp }}/AI-Contest-Hub-1.0-build1.ipa
+          if-no-files-found: error
