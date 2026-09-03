@@ -1,6 +1,6 @@
 {
   "name": "ai-contest-hub",
-  "version": "1.5.0",
+  "version": "1.8.0",
   "private": true,
   "scripts": {
     "prepare:web": "node scripts/prepare-capacitor.mjs",
@@ -8,11 +8,15 @@
     "android:icon": "node scripts/reconstruct-icons.mjs && java scripts/GenerateAndroidIcons.java",
     "android:init": "npm run prepare:web && npx cap add android && npm run android:icon",
     "android:sync": "npm run prepare:web && npx cap sync android && npm run android:icon",
-    "android:open": "npx cap open android"
+    "android:open": "npx cap open android",
+    "ios:init": "npm run prepare:web && npx cap add ios",
+    "ios:sync": "npm run prepare:web && npx cap sync ios",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "8.4.2",
-    "@capacitor/core": "8.4.2"
+    "@capacitor/core": "8.4.2",
+    "@capacitor/ios": "8.4.2"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.2"
