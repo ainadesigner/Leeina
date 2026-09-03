@@ -30,30 +30,30 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate App Store Connect secrets
+      - name: Normalize App Store Connect credentials
         env:
-          KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          KEY_ID_RAW: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID_RAW: ${{ secrets.ASC_ISSUER_ID }}
           PRIVATE_KEY: ${{ secrets.ASC_API_KEY_P8 }}
         run: |
           set -euo pipefail
+          test -n "$KEY_ID_RAW"
+          test -n "$ISSUER_ID_RAW"
+          test -n "$PRIVATE_KEY"
+          KEY_ID="$(printf '%s' "$KEY_ID_RAW" | tr -d '[:space:]')"
+          ISSUER_ID="$(printf '%s' "$ISSUER_ID_RAW" | tr -d '[:space:]')"
           test -n "$KEY_ID"
           test -n "$ISSUER_ID"
-          test -n "$PRIVATE_KEY"
-          echo "App Store Connect credentials are present"
-
-      - name: Prepare App Store Connect API key
-        env:
-          KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          PRIVATE_KEY: ${{ secrets.ASC_API_KEY_P8 }}
-        run: |
-          set -euo pipefail
+          echo "$ISSUER_ID" | grep -Eq '^[0-9A-Fa-f-]{36}$'
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
           printf '%s' "$PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
           grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH"
+          echo "ASC_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
+          echo "ASC_ISSUER_ID=$ISSUER_ID" >> "$GITHUB_ENV"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+          echo "App Store Connect credentials normalized"
 
       - name: Validate web source
         run: |
@@ -107,9 +107,6 @@ jobs:
           xcodebuild -project ios/App/App.xcodeproj -scheme App -showBuildSettings >/dev/null
 
       - name: Archive signed iOS app
-        env:
-          KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           ARCHIVE="$RUNNER_TEMP/AIContestHub.xcarchive"
@@ -127,16 +124,13 @@ jobs:
             CODE_SIGN_STYLE=Automatic \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             archive
           test -d "$ARCHIVE"
           echo "IOS_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
       - name: Export App Store IPA
-        env:
-          KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           EXPORT_DIR="$RUNNER_TEMP/export"
@@ -160,8 +154,8 @@ jobs:
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID"
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           IPA="$(find "$EXPORT_DIR" -maxdepth 1 -name '*.ipa' -print -quit)"
           test -n "$IPA"
           test -f "$IPA"
@@ -183,12 +177,9 @@ jobs:
           shasum -a 256 "$IPA_PATH"
 
       - name: Upload IPA to App Store Connect
-        env:
-          KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
-          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
