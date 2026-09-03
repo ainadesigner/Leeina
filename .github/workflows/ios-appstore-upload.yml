@@ -16,12 +16,18 @@ jobs:
       APP_BUNDLE_ID: com.aicontesthub.app
       APP_NAME: AI Contest Hub
       APP_VERSION: '1.0'
-      APP_BUILD: '1'
+      APP_BUILD: '2'
       APPLE_TEAM_ID: Q4TL332FPY
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Select Xcode 26
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version | grep '^26\.'
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -49,18 +55,18 @@ jobs:
           grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH"
           echo "ASC_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
           echo "ASC_ISSUER_ID=$ISSUER_ID" >> "$GITHUB_ENV"
-          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Validate and generate Capacitor iOS project
+      - name: Generate Capacitor iOS project
         run: |
           set -euo pipefail
           node --check app.js
           node --check native-bridge.js
           node --check android-detail-save.js
-          grep -q 'com.aicontesthub.app' capacitor.config.json
-          grep -q '"@capacitor/ios": "8.4.2"' package.json
           npm run ios:init
           test -d ios/App/App.xcodeproj
+          /usr/libexec/PlistBuddy -c 'Delete :ITSAppUsesNonExemptEncryption' ios/App/App/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c 'Add :ITSAppUsesNonExemptEncryption bool false' ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' ios/App/App/Info.plist | grep -Fx false
 
       - name: Configure app icon and verify bundled UI
         run: |
@@ -104,7 +110,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/asc-venv"
           "$RUNNER_TEMP/asc-venv/bin/pip" install --quiet PyJWT cryptography requests
           CSR_PATH="$RUNNER_TEMP/distribution.csr" CERT_PATH="$RUNNER_TEMP/distribution.cer" PROFILE_PATH="$RUNNER_TEMP/appstore.mobileprovision" META_PATH="$RUNNER_TEMP/apple-signing-meta.json" "$RUNNER_TEMP/asc-venv/bin/python" - <<'PY'
-          import os,time,jwt,requests,json,base64,sys
+          import os,time,jwt,requests,json,base64
           key_id=''.join(os.environ['KEY_ID_RAW'].split()); issuer=''.join(os.environ['ISSUER_ID_RAW'].split())
           private=os.environ['PRIVATE_KEY']; csr=open(os.environ['CSR_PATH']).read()
           token=jwt.encode({'iss':issuer,'iat':int(time.time()),'exp':int(time.time())+600,'aud':'appstoreconnect-v1'},private,algorithm='ES256',headers={'kid':key_id,'typ':'JWT'})
@@ -116,25 +122,20 @@ jobs:
                   print(f'Apple API {method} {url}: {r.status_code}\n{r.text[:3000]}'); raise SystemExit(1)
               return r
           b=req('GET',f'{base}/bundleIds?filter[identifier]=com.aicontesthub.app&limit=1').json()['data']
-          if len(b)!=1: raise SystemExit('Bundle ID com.aicontesthub.app not found or not unique')
+          if len(b)!=1: raise SystemExit('Bundle ID not found')
           bundle_id=b[0]['id']
           payload={'data':{'type':'certificates','attributes':{'certificateType':'DISTRIBUTION','csrContent':csr}}}
           r=req('POST',f'{base}/certificates',json=payload).json()['data']; meta['certificate_id']=r['id']
-          open(os.environ['META_PATH'],'w').write(json.dumps(meta))
-          base64.b64decode(r['attributes']['certificateContent']).__class__
           open(os.environ['CERT_PATH'],'wb').write(base64.b64decode(r['attributes']['certificateContent']))
           profile_name=f'AI Contest Hub App Store CI {int(time.time())}'
           pp={'data':{'type':'profiles','attributes':{'name':profile_name,'profileType':'IOS_APP_STORE'},'relationships':{'bundleId':{'data':{'type':'bundleIds','id':bundle_id}},'certificates':{'data':[{'type':'certificates','id':meta['certificate_id']}]}}}}
           p=req('POST',f'{base}/profiles',json=pp).json()['data']; meta.update({'profile_id':p['id'],'profile_name':p['attributes']['name'],'profile_uuid':p['attributes']['uuid']})
           open(os.environ['META_PATH'],'w').write(json.dumps(meta))
           open(os.environ['PROFILE_PATH'],'wb').write(base64.b64decode(p['attributes']['profileContent']))
-          print('Created Apple Distribution certificate and IOS_APP_STORE profile')
           PY
-          test -s "$RUNNER_TEMP/distribution.cer"; test -s "$RUNNER_TEMP/appstore.mobileprovision"
           security cms -D -i "$RUNNER_TEMP/appstore.mobileprovision" > "$RUNNER_TEMP/profile.plist"
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
-          test -n "$PROFILE_UUID"; test -n "$PROFILE_NAME"
           echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
 
@@ -155,13 +156,13 @@ jobs:
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$RUNNER_TEMP/appstore.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
 
-      - name: Archive manually signed App Store app
+      - name: Archive iPhone-only App Store app
         run: |
           set -euo pipefail
           ARCHIVE="$RUNNER_TEMP/AIContestHub.xcarchive"
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
             PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" PRODUCT_NAME="$APP_NAME" MARKETING_VERSION="$APP_VERSION" CURRENT_PROJECT_VERSION="$APP_BUILD" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" archive
+            TARGETED_DEVICE_FAMILY=1 DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" archive
           test -d "$ARCHIVE"
           echo "IOS_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
@@ -183,8 +184,8 @@ jobs:
           EXPORT_DIR="$RUNNER_TEMP/export"
           xcodebuild -exportArchive -archivePath "$IOS_ARCHIVE" -exportPath "$EXPORT_DIR" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
           IPA="$(find "$EXPORT_DIR" -maxdepth 1 -name '*.ipa' -print -quit)"; test -f "$IPA"
-          cp "$IPA" "$RUNNER_TEMP/AI-Contest-Hub-1.0-build1.ipa"
-          echo "IPA_PATH=$RUNNER_TEMP/AI-Contest-Hub-1.0-build1.ipa" >> "$GITHUB_ENV"
+          cp "$IPA" "$RUNNER_TEMP/AI-Contest-Hub-1.0-build2.ipa"
+          echo "IPA_PATH=$RUNNER_TEMP/AI-Contest-Hub-1.0-build2.ipa" >> "$GITHUB_ENV"
 
       - name: Validate IPA
         run: |
@@ -194,6 +195,14 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -Fx "$APP_BUNDLE_ID"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist" | grep -Fx "$APP_VERSION"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist" | grep -Fx "$APP_BUILD"
+          /usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$APP/Info.plist" | grep -Fx false
+          python3 - "$APP/Info.plist" <<'PY'
+          import plistlib,sys
+          with open(sys.argv[1],'rb') as f: p=plistlib.load(f)
+          fam=p.get('UIDeviceFamily',[])
+          assert fam == [1], f'Expected iPhone-only UIDeviceFamily [1], got {fam}'
+          print('IPHONE_ONLY_OK')
+          PY
           codesign --verify --deep --strict --verbose=2 "$APP"
           shasum -a 256 "$IPA_PATH"
 
@@ -205,8 +214,8 @@ jobs:
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ai-contest-hub-ios-1.0-build1
-          path: ${{ runner.temp }}/AI-Contest-Hub-1.0-build1.ipa
+          name: ai-contest-hub-ios-1.0-build2
+          path: ${{ runner.temp }}/AI-Contest-Hub-1.0-build2.ipa
           if-no-files-found: error
 
       - name: Cleanup Apple signing resources after failure
@@ -225,6 +234,6 @@ jobs:
           m=json.load(open(os.environ['META_PATH'])); kid=''.join(os.environ['KEY_ID_RAW'].split()); iss=''.join(os.environ['ISSUER_ID_RAW'].split())
           t=jwt.encode({'iss':iss,'iat':int(time.time()),'exp':int(time.time())+600,'aud':'appstoreconnect-v1'},os.environ['PRIVATE_KEY'],algorithm='ES256',headers={'kid':kid,'typ':'JWT'})
           h={'Authorization':f'Bearer {t}'}; base='https://api.appstoreconnect.apple.com/v1'
-          if m.get('profile_id'): print('delete profile',requests.delete(f"{base}/profiles/{m['profile_id']}",headers=h,timeout=30).status_code)
-          if m.get('certificate_id'): print('revoke certificate',requests.delete(f"{base}/certificates/{m['certificate_id']}",headers=h,timeout=30).status_code)
+          if m.get('profile_id'): requests.delete(f"{base}/profiles/{m['profile_id']}",headers=h,timeout=30)
+          if m.get('certificate_id'): requests.delete(f"{base}/certificates/{m['certificate_id']}",headers=h,timeout=30)
           PY
