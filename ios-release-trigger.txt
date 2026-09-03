@@ -1,3 +1,3 @@
-AI Contest Hub iOS 1.0 build 1 release trigger
+AI Contest Hub iOS 1.0 build 2 release trigger
 2026-09-03
-xcode-26-retry-1
+iphone-only-encryption-exempt
