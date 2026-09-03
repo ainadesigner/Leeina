@@ -22,22 +22,26 @@ jobs:
           PRIVATE_KEY: ${{ secrets.ASC_API_KEY_P8 }}
         run: |
           set -euo pipefail
-          KEY_ID="$(printf '%s' "$KEY_ID_RAW" | tr -d '[:space:]')"
-          ISSUER_ID="$(printf '%s' "$ISSUER_ID_RAW" | tr -d '[:space:]')"
           KEY_FILE="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$PRIVATE_KEY" > "$KEY_FILE"
           python3 -m pip install --quiet PyJWT cryptography requests
-          python3 - <<'PY'
+          KEY_FILE="$KEY_FILE" python3 - <<'PY'
           import os, time, jwt, requests, sys
-          key_id=os.environ['KEY_ID']
-          issuer=os.environ['ISSUER_ID']
-          with open(os.environ['KEY_FILE'],'r') as f: private=f.read()
-          token=jwt.encode({'iss':issuer,'iat':int(time.time()),'exp':int(time.time())+600,'aud':'appstoreconnect-v1'},private,algorithm='ES256',headers={'kid':key_id,'typ':'JWT'})
+          key_id=''.join(os.environ['KEY_ID_RAW'].split())
+          issuer=''.join(os.environ['ISSUER_ID_RAW'].split())
+          with open(os.environ['KEY_FILE'],'r') as f:
+              private=f.read()
+          token=jwt.encode(
+              {'iss':issuer,'iat':int(time.time()),'exp':int(time.time())+600,'aud':'appstoreconnect-v1'},
+              private,
+              algorithm='ES256',
+              headers={'kid':key_id,'typ':'JWT'}
+          )
           headers={'Authorization':f'Bearer {token}'}
           urls=[
-            'https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=com.aicontesthub.app&limit=1',
-            'https://api.appstoreconnect.apple.com/v1/certificates?limit=1',
-            'https://api.appstoreconnect.apple.com/v1/profiles?limit=1',
+              'https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=com.aicontesthub.app&limit=1',
+              'https://api.appstoreconnect.apple.com/v1/certificates?limit=1',
+              'https://api.appstoreconnect.apple.com/v1/profiles?limit=1',
           ]
           for url in urls:
               r=requests.get(url,headers=headers,timeout=30)
@@ -47,5 +51,3 @@ jobs:
                   sys.exit(1)
           print('APPLE_SIGNING_API_ACCESS_OK')
           PY
-        env:
-          KEY_ID: ${{ env.KEY_ID }}
