@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 const root=process.cwd();
 const out=resolve(root,'www');
-const files=['index.html','style.css','android-card-tuning.css','android-detail-save.css','admin.css','app.js','admin.js','recovery.js','native-bridge.js','android-detail-save.js','android-system-back.js'];
+const files=['index.html','style.css','android-card-tuning.css','android-detail-save.css','ios-shell.css','admin.css','app.js','admin.js','recovery.js','native-bridge.js','android-detail-save.js','android-system-back.js'];
 
 await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
@@ -15,7 +15,7 @@ const indexPath=resolve(out,'index.html');
 let html=await readFile(indexPath,'utf8');
 html=html.replace(
   /<link rel="stylesheet" href="\/style\.css\?v=\d+">/,
-  '$&\n  <link rel="stylesheet" href="/android-card-tuning.css?v=160">\n  <link rel="stylesheet" href="/android-detail-save.css?v=170">'
+  '$&\n  <link rel="stylesheet" href="/android-card-tuning.css?v=160">\n  <link rel="stylesheet" href="/android-detail-save.css?v=170">\n  <link rel="stylesheet" href="/ios-shell.css?v=180">'
 );
 html=html.replace(
   /<script src="\/app\.js\?v=\d+" defer><\/script>/,
@@ -24,4 +24,4 @@ html=html.replace(
 html=html.replace(/AI Contest Hub v\d+\.\d+/,'AI Contest Hub v1.8');
 await writeFile(indexPath,html,'utf8');
 
-console.log('Prepared Capacitor web assets in www/ for Android 1.8');
+console.log('Prepared Capacitor web assets in www/ for AI Contest Hub 1.8');
