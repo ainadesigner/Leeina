@@ -73,8 +73,10 @@ function injectHeart(){
   paint(btn,activeId);
 }
 function safeHttpUrl(value){
+  const raw=String(value||'').trim();
+  if(!raw)return'';
   try{
-    const url=new URL(String(value||''),location.origin);
+    const url=new URL(raw);
     return /^https?:$/.test(url.protocol)?url.href:'';
   }catch(_){return ''}
 }
