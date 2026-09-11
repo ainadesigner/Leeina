@@ -2,6 +2,7 @@
 'use strict';
 let activeId='';
 const STORAGE_KEY='aich_saved';
+const officialSourceCache=new Map();
 function savedSet(){
   try{return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]').map(String))}catch(_){return new Set()}
 }
@@ -71,11 +72,60 @@ function injectHeart(){
   btn.dataset.saveId=activeId;
   paint(btn,activeId);
 }
+function safeHttpUrl(value){
+  try{
+    const url=new URL(String(value||''),location.origin);
+    return /^https?:$/.test(url.protocol)?url.href:'';
+  }catch(_){return ''}
+}
+async function officialSourceFor(id){
+  const key=String(id||'');
+  if(!key)return'';
+  if(officialSourceCache.has(key))return officialSourceCache.get(key);
+  try{
+    const session=window.AICHSession;
+    if(!session?.request)return'';
+    const r=await session.request('/rest/v1/contests?id=eq.'+encodeURIComponent(key)+'&select=source_url&limit=1',{auth:false});
+    if(!r.ok)return'';
+    const rows=await r.json();
+    const url=safeHttpUrl(rows?.[0]?.source_url||'');
+    officialSourceCache.set(key,url);
+    return url;
+  }catch(e){
+    console.warn('official source lookup',e);
+    return'';
+  }
+}
+async function repairOfficialSourceCta(){
+  const key=String(activeId||'');
+  if(!key)return;
+  const body=document.getElementById('detailBody');
+  const anchor=body?.querySelector('a.apply');
+  if(!anchor)return;
+  anchor.textContent='공식 공모요강 보기 ↗';
+  anchor.setAttribute('aria-label','공식 공모요강 보기');
+  anchor.removeAttribute('href');
+  anchor.setAttribute('aria-disabled','true');
+  const url=await officialSourceFor(key);
+  if(String(activeId||'')!==key)return;
+  const current=body?.querySelector('a.apply');
+  if(current!==anchor)return;
+  if(url){
+    anchor.href=url;
+    anchor.removeAttribute('aria-disabled');
+  }else{
+    anchor.textContent='공식 공모요강 확인 필요';
+  }
+}
+function enhanceDetail(){
+  injectHeart();
+  repairOfficialSourceCta();
+}
 function addStyles(){
   if(document.getElementById('detailSaveStyles'))return;
   const style=document.createElement('style');
   style.id='detailSaveStyles';
-  style.textContent='.detailTitleWrap{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:end;gap:12px;margin:.83em 0}.detailTitleWrap .detailTitle{margin:0}.detailSaveHeart{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#09271f;color:#fff;font-size:28px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:transform .15s ease,color .15s ease,border-color .15s ease}.detailSaveHeart:active{transform:scale(.94)}.detailSaveHeart.on{color:var(--pink);border-color:rgba(255,90,165,.55)}';
+  style.textContent='.detailTitleWrap{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:end;gap:12px;margin:.83em 0}.detailTitleWrap .detailTitle{margin:0}.detailSaveHeart{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#09271f;color:#fff;font-size:28px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:transform .15s ease,color .15s ease,border-color .15s ease}.detailSaveHeart:active{transform:scale(.94)}.detailSaveHeart.on{color:var(--pink);border-color:rgba(255,90,165,.55)}.apply[aria-disabled="true"]{opacity:.72;pointer-events:none}';
   document.head.appendChild(style);
 }
 document.addEventListener('click',e=>{
@@ -84,8 +134,8 @@ document.addEventListener('click',e=>{
   if(card)activeId=String(card.dataset.id||'');
 },true);
 const body=document.getElementById('detailBody');
-if(body)new MutationObserver(injectHeart).observe(body,{childList:true,subtree:false});
+if(body)new MutationObserver(enhanceDetail).observe(body,{childList:true,subtree:false});
 const modal=document.getElementById('detailModal');
-if(modal)new MutationObserver(()=>{if(modal.classList.contains('open'))injectHeart()}).observe(modal,{attributes:true,attributeFilter:['class']});
+if(modal)new MutationObserver(()=>{if(modal.classList.contains('open'))enhanceDetail()}).observe(modal,{attributes:true,attributeFilter:['class']});
 addStyles();
 })();
