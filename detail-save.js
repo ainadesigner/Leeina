@@ -123,6 +123,23 @@ function enhanceDetail(){
   injectHeart();
   repairOfficialSourceCta();
 }
+function focusExploreSearch(){
+  setTimeout(()=>{
+    const explore=document.getElementById('explore');
+    const input=document.getElementById('q');
+    if(explore?.classList.contains('active')&&input){
+      try{input.focus({preventScroll:true})}catch(_){input.focus()}
+    }
+  },0);
+}
+function bridgeSearchFocus(){
+  const top=document.getElementById('searchTop');
+  const home=document.getElementById('homeSearch');
+  const homeInput=document.getElementById('homeQ');
+  if(top)top.addEventListener('click',focusExploreSearch);
+  if(home)home.addEventListener('click',focusExploreSearch);
+  if(homeInput)homeInput.addEventListener('focus',focusExploreSearch);
+}
 function addStyles(){
   if(document.getElementById('detailSaveStyles'))return;
   const style=document.createElement('style');
@@ -139,5 +156,6 @@ const body=document.getElementById('detailBody');
 if(body)new MutationObserver(enhanceDetail).observe(body,{childList:true,subtree:false});
 const modal=document.getElementById('detailModal');
 if(modal)new MutationObserver(()=>{if(modal.classList.contains('open'))enhanceDetail()}).observe(modal,{attributes:true,attributeFilter:['class']});
+bridgeSearchFocus();
 addStyles();
 })();
