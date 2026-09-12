@@ -124,13 +124,15 @@ function enhanceDetail(){
   repairOfficialSourceCta();
 }
 function focusExploreSearch(){
-  setTimeout(()=>{
+  const focus=()=>{
     const explore=document.getElementById('explore');
     const input=document.getElementById('q');
     if(explore?.classList.contains('active')&&input){
       try{input.focus({preventScroll:true})}catch(_){input.focus()}
     }
-  },0);
+  };
+  if(document.getElementById('explore')?.classList.contains('active'))focus();
+  else requestAnimationFrame(focus);
 }
 function bridgeSearchFocus(){
   const top=document.getElementById('searchTop');
