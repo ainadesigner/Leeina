@@ -35,3 +35,16 @@
 - [위비티](https://www.wevity.com/): 분야별 탐색, 접수 상태, 마감일 표시
 - [씽굿](https://www.thinkcontest.com/thinkgood/index.do): 추천 기회와 목록의 공모명·주최·D-day 정보
 - [Devpost](https://devpost.com/hackathons): 글로벌 공모·해커톤 탐색 흐름
+
+## 검색 등록과 공개 상세 페이지
+
+정식 주소는 https://ai-contest-hub-v12.vercel.app/ 입니다. 다른 도메인으로 변경하면 `lib/seo.js`, `index.html`, `robots.txt`의 주소와 검색엔진 등록 속성을 함께 변경하세요.
+
+- `/opportunities`: 자바스크립트 없이 읽을 수 있는 공개 목록. 48개씩 실제 링크로 페이지를 이동합니다.
+- `/contests/:id`: 공개된 공모전의 제목·일정·요강을 서버에서 렌더링합니다. 마감 기회는 마감을 표시합니다.
+- `/sitemap.xml`: 공개 상태의 ID를 읽어 최신 목록을 반환합니다. DB 오류는 503으로 반환해 빈 사이트맵이 제출되지 않도록 했습니다.
+- `/robots.txt`: 검색 수집 경로와 사이트맵을 안내합니다.
+- `api/*.js`, `lib/seo.js`: Vercel Node.js Functions. 별도 패키지 설치 없이 동작하며 기존 공개 키와 RLS를 사용합니다.
+- 홈페이지의 Google 인증 태그는 소유권 확인을 유지하기 위해 남겨 두세요.
+
+검색 등록은 검색 결과 반영이나 순위를 보장하지 않습니다. 구글 Search Console과 네이버 서치어드바이저에서 수집 상태를 확인하세요.
