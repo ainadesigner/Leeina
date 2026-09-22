@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /supa/
+Disallow: /api/
+
+Sitemap: https://ai-contest-hub-v12.vercel.app/sitemap.xml

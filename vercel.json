@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/contests/:id", "destination": "/api/contest?id=:id" },
+    { "source": "/opportunities", "destination": "/api/opportunities" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     {
       "source": "/privacy",
       "destination": "/privacy.html"
