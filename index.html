@@ -4,57 +4,76 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#061813">
-  <meta name="description" content="전 세계 AI 공모전, 영화제, 교육, 정책 기회를 한눈에 찾는 AI Contest Hub">
-  <title>AI Contest Hub · Global AI Opportunities</title>
-  <link rel="stylesheet" href="/style.css?v=103">
+  <meta name="description" content="AI 공모전, 영화제, 교육과 지원사업을 한곳에서. 분야와 AI 사용 조건으로 찾고, 마감일을 확인하고, 나의 다음 도전을 저장하세요.">
+  <title>AI Contest Hub · 나의 다음 AI 도전</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css?v=200">
   <link rel="stylesheet" href="/admin.css?v=103">
+  <link rel="stylesheet" href="/web.css?v=200">
 </head>
 <body>
-<div class="app">
-  <header class="top">
-    <div class="brand"><small>GLOBAL AI OPPORTUNITIES</small><b>AI Contest Hub</b></div>
-    <a class="icon insta" href="https://www.instagram.com/ai.contesthub/" target="_blank" rel="noopener" aria-label="Instagram">◎</a>
-    <button class="icon" id="searchTop" aria-label="검색">⌕</button>
-  </header>
-
-  <main>
-    <section class="screen active" id="home">
-      <div class="hero"><small>DISCOVER · CREATE · APPLY</small><h1>AI로 도전할 모든 기회,<br><span>여기에서.</span></h1><p>전 세계 AI 공모전부터 영화제, 교육, 정책까지.<br>AI로 도전할 수 있는 기회를 검증해 한곳에 모았습니다.</p></div>
-      <div class="statusbar"><span>Global Opportunity Index</span><b id="cloudState">연결 확인 중</b></div>
-      <div class="homeSearch" id="homeSearch"><span>⌕</span><input id="homeQ" placeholder="AI 공모전, 영화제, 교육을 검색하세요"></div>
-      <div class="categoryTabs" id="homeCategories"></div>
-      <div class="sectionTitle"><div><small>EDITOR'S PICK</small><h2>오늘의 AI PICK</h2></div><button data-go="explore">전체 보기</button></div>
-      <div class="grid" id="globalPicks"><div class="empty"><b>데이터를 불러오는 중입니다.</b>잠시만 기다려 주세요.</div></div>
-      <div class="sectionTitle"><div><small>DEADLINE</small><h2>마감 임박</h2></div><button data-deadline>전체 보기</button></div>
-      <div class="grid" id="deadlineGrid"></div>
-      <div class="sectionTitle"><div><small>NEW</small><h2>방금 올라온 AI 기회</h2></div><button data-go="explore">전체 보기</button></div>
-      <div class="grid" id="latest"></div>
-    </section>
-
-    <section class="screen" id="explore">
-      <div class="hero compact"><small>GLOBAL SEARCH</small><h1>AI 기회 탐색</h1><p>AI 분야와 키워드로 원하는 기회를 빠르게 찾으세요.</p></div>
-      <div class="searchBox"><span>⌕</span><input id="q" placeholder="AI 공모전, 영화제, 교육을 검색하세요"></div>
-      <div class="categoryTabs" id="exploreCategories"></div>
-      <div class="filters">
-        <select id="aiFilter"><option value="all">AI 가능 여부 전체</option><option value="ready">AI 활용 가능 전체</option><option value="required">AI 필수</option><option value="allowed">AI 사용 가능</option><option value="limited">AI 일부 허용</option><option value="unclear">AI 규정 확인필요</option></select>
-        <select id="scopeFilter"><option value="all">국내 + 해외</option><option value="global">🌎 Global</option><option value="korea">🇰🇷 Korea</option><option value="overseas">해외</option></select>
+<a class="skipLink" href="#main">본문으로 바로가기</a>
+<header class="webHeader">
+  <div class="headerInner">
+    <a class="brandLink" href="#home" aria-label="AI Contest Hub 홈"><span class="brandMark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span><span class="brand"><b>AI Contest Hub<span class="brandDot">.</span></b><small>DISCOVER YOUR NEXT CHALLENGE</small></span></a>
+    <nav class="desktopNav" aria-label="주 메뉴"><button type="button" data-go="home" class="on"><span>홈</span></button><button type="button" data-go="explore" class=""><span>탐색</span></button><button type="button" data-go="saved" class=""><span>저장</span><span class="savedCount">0</span></button><button type="button" data-go="my" class=""><span>마이 허브</span></button></nav>
+    <div class="headerActions"><button class="iconButton" id="searchTop" aria-label="공모전 검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button class="loginLink" data-go="my">내 계정 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button></div>
+  </div>
+</header>
+<div class="app webApp">
+  <aside class="sidebar" aria-label="분야별 탐색">
+    <div class="sidebarLabel">나에게 맞는 기회</div>
+    <button class="sidebarAll" data-go="explore"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> 전체 기회 탐색 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+    <div class="sidebarDivider"></div><div class="sidebarLabel">관심 분야</div>
+    <div id="sideCategories" class="sideCategories"></div>
+    <div class="sidebarDivider"></div><div class="sidebarLabel">빠르게 찾아보기</div>
+    <button class="sideQuick" data-quick="deadline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 마감 임박</button>
+    <button class="sideQuick" data-quick="global"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg> 글로벌 기회</button>
+    <button class="sideQuick" data-go="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4z"/></svg> 저장한 기회 <span class="savedCount">0</span></button>
+    <div class="sidebarNote"><span class="miniEyebrow">MAKE YOUR NEXT MOVE</span><strong>작은 관심이<br>새로운 도전으로.</strong><p>눈에 들어온 기회는 저장하고<br>준비되었을 때 다시 만나세요.</p></div>
+    <a class="instagramLink" href="https://www.instagram.com/ai.contesthub/" target="_blank" rel="noopener">Instagram @ai.contesthub ↗</a>
+  </aside>
+  <main id="main" tabindex="-1">
+    <div id="connectionNotice" class="connectionNotice" role="status" hidden></div>
+    <section class="screen active" id="home" aria-labelledby="homeTitle">
+      <div class="homeHero">
+        <div><div class="eyebrow"><span></span> YOUR NEXT AI CHALLENGE</div><h1 id="homeTitle">당신의 가능성,<br><span>다음 도전으로.</span></h1><p>공모전부터 영화제, 교육까지.<br>AI로 펼칠 수 있는 기회를 발견하세요.</p></div>
+        <div class="heroSide"><div class="heroStamp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg> OPEN TO POSSIBILITIES</div><div class="heroNumbers"><b id="openCount">—</b><span>지금 살펴볼 수 있는 기회</span></div><div class="heroMeta"><span>국내에서 세계까지</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></div></div>
       </div>
-      <div class="resultMeta"><b id="resultCount">0</b><span>개의 AI 기회</span></div>
-      <div class="grid" id="all"></div>
+      <form class="homeSearch" id="homeSearch" role="search"><label class="srOnly" for="homeQ">공모전 검색</label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="homeQ" type="search" placeholder="어떤 AI 도전을 찾고 있나요?" autocomplete="off"><button type="submit">기회 찾기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></form>
+      <div class="popularSearch"><span>빠른 검색</span><button data-keyword="영상"># AI 영상</button><button data-keyword="디자인"># 디자인</button><button data-keyword="해커톤"># 해커톤</button><button data-quick="deadline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 마감 임박</button></div>
+      <div class="categoryTabs" id="homeCategories" aria-label="추천 기회 분야"></div>
+      <div class="sectionTitle"><div><small>CURATED FOR YOU</small><h2>눈여겨볼 AI 기회<span class="titleAccent">✦</span></h2></div><button data-picks>전체 보기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div>
+      <p class="sectionDescription">다양한 분야에서 나의 다음 도전을 찾아보세요.</p>
+      <div class="grid" id="dailyPicks" aria-live="polite"><div class="empty"><span class="loadingRing"></span><b>새로운 기회를 불러오고 있어요.</b></div></div>
+      <div class="sectionTitle deadlineTitle"><div><small>DON'T MISS OUT</small><h2>마감 전에, 한 번 더</h2></div><button data-deadline>마감일순 보기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div>
+      <div class="grid deadlineGrid" id="deadlineGrid"></div>
+      <div class="sectionTitle"><div><small>BEYOND BORDERS</small><h2>세계로 넓히는 도전</h2></div><button data-global>글로벌 기회 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div>
+      <div class="grid" id="globalGrid"></div>
     </section>
-
-    <section class="screen" id="saved">
-      <div class="hero compact"><small>SAVED</small><h1>저장한 기회</h1><p>지원하고 싶은 AI 기회를 모아두세요.</p></div>
-      <div class="grid" id="savedGrid"></div>
+    <section class="screen" id="explore" aria-labelledby="exploreTitle">
+      <div class="pageHeading"><div class="eyebrow">FIND YOUR OPPORTUNITY</div><h1 id="exploreTitle">나에게 맞는 AI 기회</h1><p>관심 분야와 참여 조건을 골라, 한 걸음 가까워진 도전.</p></div>
+      <div class="searchBox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><label class="srOnly" for="q">제목, 주최기관, 키워드 검색</label><input id="q" type="search" placeholder="제목, 주최기관, 키워드로 검색" autocomplete="off"></div>
+      <div class="categoryTabs" id="exploreCategories" aria-label="탐색 분야"></div>
+      <div class="filterPanel"><div class="filters">
+        <label>AI 사용 조건<select id="aiFilter"><option value="all">모든 AI 조건</option><option value="ready">AI 활용 가능 전체</option><option value="required">AI 필수</option><option value="allowed">AI 사용 가능</option><option value="limited">AI 일부 허용</option><option value="unclear">AI 규정 확인 필요</option></select></label>
+        <label>모집 지역<select id="scopeFilter"><option value="all">국내 + 해외</option><option value="global">글로벌 참여</option><option value="korea">국내</option><option value="overseas">해외</option></select></label>
+        <label>접수 상태<select id="statusFilter"><option value="open">접수 중 · 상시 모집</option><option value="week">7일 안에 마감</option><option value="month">30일 안에 마감</option><option value="all">마감 포함 전체</option><option value="closed">마감된 기회</option></select></label>
+      </div><div class="filterBottom"><span>조건을 조합해 원하는 기회를 찾아보세요.</span><button id="resetFilters" class="textBtn">필터 초기화</button></div></div>
+      <div id="activeFilters" class="activeFilters" aria-label="적용한 조건"></div>
+      <div class="resultsToolbar"><div class="resultMeta"><span>검색 결과</span><b id="resultCount">0</b><span>개</span></div><div class="resultControls"><label class="srOnly" for="sortFilter">정렬 방식</label><select id="sortFilter"><option value="recommended">추천순</option><option value="deadline">마감 임박순</option><option value="prize">상금 높은 순</option><option value="newest">최신 등록순</option></select><div class="viewSwitch" aria-label="보기 방식"><button id="gridView" class="on" aria-label="카드로 보기" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="listView" aria-label="목록으로 보기" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></svg></button></div></div></div>
+      <p id="prizeGuide" class="sortGuide" hidden>상금 정렬은 표시된 금액과 고정 환산율에 따른 참고 순서입니다. 실제 지급액은 공식 요강을 확인하세요.</p>
+      <div class="grid" id="all" aria-live="polite"></div>
+      <div class="pagination"><p id="shownCount"></p><button id="loadMore" class="btn secondary" hidden>기회 더 보기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div>
     </section>
-
+    <section class="screen" id="saved" aria-labelledby="savedTitle"><div class="pageHeading"><div class="eyebrow">YOUR SHORTLIST</div><h1 id="savedTitle">다시 만나고 싶은 기회</h1><p>관심 있는 도전을 모아두고, 나만의 속도로 준비하세요.</p></div><div class="savedInfo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4z"/></svg> 저장 목록은 이 브라우저에 보관됩니다. 로그인하면 계정의 저장 목록도 불러옵니다.</div><div class="grid" id="savedGrid" aria-live="polite"></div></section>
     <section class="screen" id="my">
-      <div class="hero compact"><small>MY HUB</small><h1>내 정보</h1></div>
+      <div class="hero compact"><small>MY HUB</small><h1>마이 허브</h1><p>나의 도전과 출석, 수상 기록을 한곳에서.</p></div>
       <div class="panel profile"><strong id="name">게스트</strong><p id="email">로그인하면 출석과 수상 인증 기록을 저장할 수 있습니다.</p></div>
       <div class="panel" id="authBox">
-        <input class="input" id="authName" placeholder="이름 (회원가입 시)">
-        <input class="input" id="authEmail" type="email" autocomplete="email" placeholder="이메일">
-        <input class="input" id="authPw" type="password" autocomplete="current-password" placeholder="비밀번호 8자 이상">
+        <input class="input" id="authName" aria-label="이름" placeholder="이름 (회원가입 시)">
+        <input class="input" id="authEmail" aria-label="이메일" type="email" autocomplete="email" placeholder="이메일">
+        <input class="input" id="authPw" aria-label="비밀번호" type="password" autocomplete="current-password" placeholder="비밀번호 8자 이상">
         <div class="row"><button class="btn secondary" id="signInBtn">로그인</button><button class="btn primary" id="signUpBtn">회원가입</button></div>
         <button class="textBtn" id="resetBtn">비밀번호를 잊으셨나요? 비밀번호 찾기</button>
         <p class="msg" id="authMsg"></p>
@@ -76,8 +95,8 @@
         </div>
         <div class="panel awardCard">
           <div class="awardHead"><span>🏆</span><div><small>VERIFIED WINNER</small><strong>수상 인증하기</strong><p>AI 공모전 수상 기록을 인증하고 특별 리워드에 도전하세요.</p></div></div>
-          <input class="input" id="awardContest" placeholder="공모전 / 영화제 이름">
-          <input class="input" id="awardName" placeholder="수상명 (예: 대상, 우수상, Finalist)">
+          <input class="input" id="awardContest" aria-label="공모전 / 영화제 이름" placeholder="공모전 / 영화제 이름">
+          <input class="input" id="awardName" aria-label="수상명" placeholder="수상명 (예: 대상, 우수상, Finalist)">
           <label class="fileBox">상장 또는 수상 화면 업로드<input id="awardProof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
           <button class="btn awardBtn full" id="awardSubmitBtn">수상 인증 제출</button>
           <p class="msg" id="awardMsg"></p>
@@ -96,15 +115,14 @@
       </section>
 
       <div class="panel instagramCard"><div class="instagramLogo">◎</div><div><strong>Instagram · @AI.CONTESTHUB</strong><p>새 공모전 소식과 AI 크리에이터 정보를 인스타그램에서도 확인하세요.</p><a href="https://www.instagram.com/ai.contesthub/" target="_blank" rel="noopener">Instagram 열기 ↗</a></div></div>
-      <div class="panel version"><b>AI Contest Hub v1.2</b><p>Discover · Challenge · Win · Verify</p></div>
+      <div class="panel version"><b>AI Contest Hub</b><p>당신의 다음 AI 도전을 응원합니다.</p></div>
     </section>
+
+    <footer class="webFooter"><div><strong>AI Contest Hub<span>.</span></strong><p>새로운 가능성을 발견하는 곳.</p></div><div class="footerLinks"><a href="/privacy.html">개인정보처리방침</a><a href="/delete-account.html">계정 삭제 안내</a><a href="https://www.instagram.com/ai.contesthub/" target="_blank" rel="noopener">Instagram ↗</a></div><div class="footerBottom"><span>© 2026 AI Contest Hub</span><span id="cloudState">기회 목록 연결 중</span></div></footer>
   </main>
 </div>
-<nav class="nav"><button class="on" data-go="home">⌂<span>홈</span></button><button data-go="explore">⌕<span>탐색</span></button><button data-go="saved">♡<span>저장</span></button><button data-go="my">◉<span>MY</span></button></nav>
-<div class="modal" id="detailModal"><div class="sheet"><button class="close" id="detailClose">×</button><div id="detailBody"></div></div></div>
-<script src="/app.js?v=105" defer></script>
-<script src="/detail-save.js?v=106" defer></script>
-<script src="/admin.js?v=105" defer></script>
-<script src="/recovery.js?v=105" defer></script>
-</body>
-</html>
+<nav class="nav" aria-label="모바일 주 메뉴"><button type="button" data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></svg><span>홈</span></button><button type="button" data-go="explore" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span>탐색</span></button><button type="button" data-go="saved" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4z"/></svg><span>저장</span></button><button type="button" data-go="my" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>마이 허브</span></button></nav>
+<div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle" tabindex="-1"><div class="sheet"><button class="close" id="detailClose" aria-label="상세 정보 닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button><div id="detailBody"></div></div></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="/app.js?v=200" defer></script><script src="/admin.js?v=105" defer></script><script src="/recovery.js?v=105" defer></script>
+</body></html>
