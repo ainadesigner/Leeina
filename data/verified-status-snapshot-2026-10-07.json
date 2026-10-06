@@ -1,0 +1,39 @@
+{
+  "verified_at": "2026-10-07T02:14:17+09:00",
+  "official_checks": [
+    {
+      "id": "filmfreeway-ujjaini-ai-generative-cinema-2026",
+      "deadline": "2026-10-12",
+      "deadline_at": "2026-10-13T06:59:00.000Z",
+      "source": "https://filmfreeway.com/USFF"
+    },
+    {
+      "id": "filmfreeway-future-frames-corfu-ai-film-2026",
+      "deadline": "2027-02-28",
+      "deadline_at": "2027-03-01T07:59:00.000Z",
+      "source": "https://filmfreeway.com/FutureFramesCorfu"
+    },
+    {
+      "id": "filmfreeway-two-rabbits-ai-contents-awards-2026",
+      "submission_state": "waiver_codes_only",
+      "source": "https://filmfreeway.com/TWORABBITSAICONTENTSAWARDS"
+    },
+    {
+      "id": "filmfreeway-ai-international-music-video-festival-2026-09",
+      "submission_state": "superseded_by_october_round",
+      "source": "https://filmfreeway.com/AIMusicVideoFestival"
+    },
+    {
+      "id": "official-runway-ai-summit-speaker-open-call-2026",
+      "event_date": "2026-09-30",
+      "submission_state": "event_passed",
+      "source": "https://summit.runwayml.com/speaker-apply"
+    },
+    {
+      "id": "filmfreeway-csfcca-ai-film-2026",
+      "deadline": "2026-12-31",
+      "note": "December 31 is the official final deadline; January 22, 2027 is the notification date.",
+      "source": "https://filmfreeway.com/CSFCCAAIFilmFestival"
+    }
+  ]
+}
