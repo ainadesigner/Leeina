@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-10-06T20:18:49+09:00",
+  "verified_at": "2026-10-06T23:50:38+09:00",
   "records": [
     {
       "id": "filmfreeway-ujjaini-ai-generative-cinema-2026",
@@ -25,14 +25,19 @@
       "note": "Current FilmFreeway listing shows Deadline October 6, 2026 and Submit Now"
     },
     {
-      "id": "filmfreeway-ai-toronto-genre-awards-2026",
-      "stale_status": "closed",
-      "stale_deadline": "2026-09-02",
-      "status": "live",
-      "deadline": "2027-05-22",
-      "deadline_at": "2027-05-23T06:59:00.000Z",
+      "id": "filmfreeway-csfcca-ai-film-2026",
+      "stale_deadline": "2026-12-31",
+      "deadline": "2027-01-22",
+      "deadline_at": "2027-01-23T07:59:00.000Z",
       "source": "FilmFreeway",
-      "note": "Current listing reopened/new schedule; Submit Now; event June 5, 2027"
+      "note": "WINTER 2026 Final Deadline; Regular Deadline is December 31, 2026"
+    },
+    {
+      "id": "filmfreeway-two-rabbits-ai-contents-awards-2026",
+      "deadline": "2026-10-05",
+      "freshness_status": "waiver_codes_only",
+      "source": "FilmFreeway",
+      "note": "General submission window has ended; listing now shows Waiver Codes Only"
     }
   ]
 }
