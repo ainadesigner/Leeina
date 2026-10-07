@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-10-07T09:29:51+09:00",
+  "production_write_status": "blocked_by_safety_guard",
+  "records": [
+    {"id":"official-aimpacto-hackathon-2026","action":"remove_stale_deadline_keep_live","stale_deadline":"2026-10-05","reason":"official organizer page still accepts registration and publishes no current cutoff"},
+    {"id":"official-zinstrel-elevenmusic-challenge-2026","action":"close","deadline":"2026-09-28","reason":"official rules state submissions closed September 28 at 11:59 PM Mountain Time"},
+    {"id":"official-snowflake-coco-cli-gcc-hackathon-2026","action":"close","deadline":"2026-10-04","reason":"official timeline states prototype submission ended October 4"},
+    {"id":"official-stevens-ai-ignite-lab-2026","action":"close","reason":"official portal deadline and application date are both past"}
+  ],
+  "correction": {
+    "id":"filmfreeway-csfcca-ai-film-2026",
+    "deadline":"2026-12-31",
+    "note":"January 22, 2027 is the notification date, not the final deadline."
+  }
+}
